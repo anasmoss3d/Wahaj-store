@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   },
   description: "Premium handmade concrete decor with configurable colors and add-ons.",
   metadataBase: new URL(process.env.APP_URL || "http://localhost:3000"),
+  icons: {
+    icon: "/brand/wahaj-logo.jpg",
+    apple: "/brand/wahaj-logo.jpg"
+  },
   openGraph: {
     title: "Wahaj | Handmade Concrete Decor",
     description: "Premium handmade concrete decor with configurable colors and add-ons.",

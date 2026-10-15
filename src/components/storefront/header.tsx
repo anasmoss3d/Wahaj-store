@@ -22,7 +22,7 @@ export async function StorefrontHeader() {
           <Link className="flex min-w-0 items-center gap-2 sm:gap-3" href="/">
             <Image
               alt="Wahaj logo"
-              className="h-10 w-10 shrink-0 rounded-full object-cover sm:h-12 sm:w-12"
+              className="h-10 w-10 shrink-0 rounded-xl object-cover sm:h-12 sm:w-12"
               height={96}
               src="/brand/wahaj-logo.jpg"
               width={96}
