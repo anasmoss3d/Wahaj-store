@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { type AdminPrincipal, hasPermission, type PermissionKey } from "@/lib/rbac";
 import { requestMetadata } from "@/lib/security";
@@ -13,7 +14,7 @@ import {
   setSessionCookie
 } from "@/lib/sessions";
 
-export async function getCurrentUser() {
+async function getCurrentUserUncached() {
   const token = await readCookie(CUSTOMER_SESSION_COOKIE);
   if (!token) return null;
 
@@ -34,7 +35,9 @@ export async function getCurrentUser() {
   return session.user;
 }
 
-export async function getCurrentAdmin(): Promise<AdminPrincipal | null> {
+export const getCurrentUser = cache(getCurrentUserUncached);
+
+async function getCurrentAdminUncached(): Promise<AdminPrincipal | null> {
   const token = await readCookie(ADMIN_SESSION_COOKIE);
   if (!token) return null;
 
@@ -66,6 +69,8 @@ export async function getCurrentAdmin(): Promise<AdminPrincipal | null> {
 
   return session.adminUser;
 }
+
+export const getCurrentAdmin = cache(getCurrentAdminUncached);
 
 export async function requireAdmin(permission?: PermissionKey) {
   const admin = await getCurrentAdmin();

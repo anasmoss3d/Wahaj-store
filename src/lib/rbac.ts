@@ -4,6 +4,7 @@ export const PERMISSIONS = {
   DASHBOARD_READ: "dashboard:read",
   PRODUCTS_MANAGE: "products:manage",
   ORDERS_MANAGE: "orders:manage",
+  MARKETING_MANAGE: "marketing:manage",
   SETTINGS_MANAGE: "settings:manage",
   ADMINS_MANAGE: "admins:manage",
   AUDIT_READ: "audit:read"

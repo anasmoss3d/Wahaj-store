@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
+import { cache } from "react";
 import { getCurrentUser } from "@/lib/auth";
+import { validateCouponForSubtotal } from "@/lib/coupons";
 import { prisma } from "@/lib/db";
 import { calculateLinePrice, cartItemSignature } from "@/lib/pricing";
 import { getOrCreateCartSessionId, readCookie, CART_COOKIE } from "@/lib/sessions";
@@ -26,6 +28,8 @@ export type CartView = {
   subtotal: Prisma.Decimal;
   subtotalCents: number;
   count: number;
+  couponCode: string | null;
+  discountCents: number;
 };
 
 async function findActiveCart(create = false) {
@@ -58,7 +62,7 @@ async function findActiveCart(create = false) {
   });
 }
 
-export async function getCartView(): Promise<CartView> {
+async function getCartViewUncached(): Promise<CartView> {
   const cart = await findActiveCart(false);
   if (!cart) {
     return {
@@ -66,7 +70,9 @@ export async function getCartView(): Promise<CartView> {
       items: [],
       subtotal: new Prisma.Decimal(0),
       subtotalCents: 0,
-      count: 0
+      count: 0,
+      couponCode: null,
+      discountCents: 0
     };
   }
 
@@ -130,9 +136,23 @@ export async function getCartView(): Promise<CartView> {
     items,
     subtotal: new Prisma.Decimal((subtotalCents / 100).toFixed(2)),
     subtotalCents,
-    count
+    count,
+    couponCode: cart.couponCode,
+    discountCents: await resolveCartDiscount(cart.couponCode, subtotalCents)
   };
 }
+
+async function resolveCartDiscount(couponCode: string | null, subtotalCents: number) {
+  if (!couponCode || subtotalCents <= 0) return 0;
+  try {
+    const { discountCents } = await validateCouponForSubtotal(couponCode, subtotalCents);
+    return discountCents;
+  } catch {
+    return 0;
+  }
+}
+
+export const getCartView = cache(getCartViewUncached);
 
 export async function addCartItem(input: {
   productId: string;
@@ -238,4 +258,19 @@ export async function removeCartItem(id: string) {
   const cart = await findActiveCart(false);
   if (!cart) throw new Error("Cart not found.");
   await prisma.cartItem.deleteMany({ where: { id, cartId: cart.id } });
+}
+
+export async function setCartCoupon(code: string | null) {
+  const cart = await findActiveCart(true);
+  if (!cart) throw new Error("Could not create cart.");
+
+  if (code === null) {
+    await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
+    return;
+  }
+
+  const view = await getCartView();
+  if (view.items.length === 0) throw new Error("Your cart is empty.");
+  const { coupon } = await validateCouponForSubtotal(code, view.subtotalCents);
+  await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: coupon.code } });
 }

@@ -38,17 +38,31 @@ const formatter = new Intl.NumberFormat("en-EG", {
 export function ProductCustomizer({
   product,
   colors,
-  addons
+  addons,
+  labels
 }: {
   product: ProductOption;
   colors: ColorOption[];
   addons: AddonOption[];
+  labels: {
+    madeToOrder: string;
+    startsAt: string;
+    chooseColor: string;
+    addExtras: string;
+    included: string;
+    quantity: string;
+    total: string;
+    addToCart: string;
+    buyNow: string;
+    added: string;
+  };
 }) {
   const router = useRouter();
   const [selectedColorId, setSelectedColorId] = useState(colors[0]?.id ?? "");
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const selectedColor = colors.find((color) => color.id === selectedColorId) ?? colors[0];
@@ -70,6 +84,7 @@ export function ProductCustomizer({
 
   function addToCart(goToCheckout = false) {
     setMessage("");
+    setIsSuccess(false);
     startTransition(async () => {
       const response = await fetch("/api/cart/items", {
         method: "POST",
@@ -90,7 +105,8 @@ export function ProductCustomizer({
       if (goToCheckout) {
         router.push("/checkout");
       } else {
-        setMessage("Added to cart.");
+        setIsSuccess(true);
+        setMessage(labels.added);
       }
     });
   }
@@ -112,17 +128,17 @@ export function ProductCustomizer({
       <div className="grid content-start gap-7">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.12em] text-wahaj-gold">
-            Made to order
+            {labels.madeToOrder}
           </p>
           <h1 className="mt-2 text-3xl font-bold text-concrete-900 md:text-5xl">{product.name}</h1>
           <p className="mt-3 text-lg font-semibold text-wahaj-teal">
-            Starts at {formatter.format(product.basePrice)}
+            {labels.startsAt} {formatter.format(product.basePrice)}
           </p>
         </div>
 
         <div className="grid gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-concrete-900">Choose color</h2>
+            <h2 className="font-semibold text-concrete-900">{labels.chooseColor}</h2>
             {selectedColor?.additionalPrice ? (
               <span className="text-sm text-concrete-500">
                 +{formatter.format(selectedColor.additionalPrice)}
@@ -149,7 +165,7 @@ export function ProductCustomizer({
                 <span className="grid">
                   <span className="font-semibold">{color.name}</span>
                   <span className="text-xs text-concrete-500">
-                    {color.additionalPrice ? `+${formatter.format(color.additionalPrice)}` : "Included"}
+                    {color.additionalPrice ? `+${formatter.format(color.additionalPrice)}` : labels.included}
                   </span>
                 </span>
               </button>
@@ -158,7 +174,7 @@ export function ProductCustomizer({
         </div>
 
         <div className="grid gap-3">
-          <h2 className="font-semibold text-concrete-900">Add extras</h2>
+          <h2 className="font-semibold text-concrete-900">{labels.addExtras}</h2>
           <div className="grid gap-3">
             {addons.map((addon) => (
               <label
@@ -213,7 +229,7 @@ export function ProductCustomizer({
             </button>
           </div>
           <div className="text-end">
-            <span className="block text-sm text-concrete-500">Total</span>
+            <span className="block text-sm text-concrete-500">{labels.total}</span>
             <span className="text-3xl font-bold text-concrete-900">{formatter.format(total)}</span>
           </div>
         </div>
@@ -222,7 +238,7 @@ export function ProductCustomizer({
           <p
             className={cn(
               "rounded-md px-3 py-2 text-sm",
-              message.includes("Added") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+              isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
             )}
           >
             {message}
@@ -231,14 +247,14 @@ export function ProductCustomizer({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Button disabled={isPending || !selectedColorId} onClick={() => addToCart(false)}>
-            <ShoppingBag size={18} /> Add to cart
+            <ShoppingBag size={18} /> {labels.addToCart}
           </Button>
           <Button
             disabled={isPending || !selectedColorId}
             onClick={() => addToCart(true)}
             variant="secondary"
           >
-            <Zap size={18} /> Buy now
+            <Zap size={18} /> {labels.buyNow}
           </Button>
         </div>
       </div>

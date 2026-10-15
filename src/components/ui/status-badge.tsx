@@ -1,15 +1,6 @@
-import { OrderStatus } from "@prisma/client";
+import type { OrderStatus } from "@prisma/client";
 import { cn } from "@/lib/utils";
-
-const labels: Record<OrderStatus, string> = {
-  PENDING: "Pending",
-  CONFIRMED: "Confirmed",
-  PREPARING: "Preparing",
-  READY: "Ready",
-  SHIPPED: "Shipped",
-  DELIVERED: "Delivered",
-  CANCELLED: "Cancelled"
-};
+import { statusLabels, type Locale, type OrderStatusKey } from "@/lib/i18n";
 
 const styles: Record<OrderStatus, string> = {
   PENDING: "bg-amber-50 text-amber-700",
@@ -21,10 +12,18 @@ const styles: Record<OrderStatus, string> = {
   CANCELLED: "bg-red-50 text-red-700"
 };
 
-export function StatusBadge({ status, className }: { status: OrderStatus; className?: string }) {
+export function StatusBadge({
+  status,
+  className,
+  locale = "en"
+}: {
+  status: OrderStatus;
+  className?: string;
+  locale?: Locale;
+}) {
   return (
     <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", styles[status], className)}>
-      {labels[status]}
+      {statusLabels[locale][status as OrderStatusKey]}
     </span>
   );
 }

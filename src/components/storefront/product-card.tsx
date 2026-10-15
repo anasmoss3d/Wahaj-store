@@ -2,8 +2,10 @@ import Image from "next/image";
 import type { Product } from "@prisma/client";
 import { ButtonLink } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { getDictionary } from "@/lib/i18n";
 
-export function ProductCard({ product }: { product: Product }) {
+export async function ProductCard({ product }: { product: Product }) {
+  const dict = await getDictionary();
   return (
     <article className="group overflow-hidden rounded-md border border-concrete-100 bg-white shadow-soft">
       <a className="block" href={`/products/${product.slug}`}>
@@ -25,7 +27,7 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="flex items-center justify-between gap-3">
           <span className="font-bold text-wahaj-teal">{formatMoney(product.basePrice)}</span>
           <ButtonLink href={`/products/${product.slug}`} variant="ghost">
-            Customize
+            {dict.customize}
           </ButtonLink>
         </div>
       </div>

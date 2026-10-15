@@ -4,7 +4,15 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, Trash2 } from "lucide-react";
 
-export function CartLineControls({ itemId, quantity }: { itemId: string; quantity: number }) {
+export function CartLineControls({
+  itemId,
+  quantity,
+  labels = { decrease: "Decrease quantity", increase: "Increase quantity", remove: "Remove item" }
+}: {
+  itemId: string;
+  quantity: number;
+  labels?: { decrease: string; increase: string; remove: string };
+}) {
   const router = useRouter();
   const [current, setCurrent] = useState(quantity);
   const [pending, startTransition] = useTransition();
@@ -33,7 +41,7 @@ export function CartLineControls({ itemId, quantity }: { itemId: string; quantit
     <div className="flex items-center gap-3">
       <div className="inline-flex h-10 items-center rounded-md border border-concrete-200">
         <button
-          aria-label="Decrease quantity"
+          aria-label={labels.decrease}
           className="grid h-10 w-10 place-items-center disabled:opacity-50"
           disabled={pending}
           onClick={() => update(current - 1)}
@@ -43,7 +51,7 @@ export function CartLineControls({ itemId, quantity }: { itemId: string; quantit
         </button>
         <span className="w-10 text-center text-sm font-semibold">{current}</span>
         <button
-          aria-label="Increase quantity"
+          aria-label={labels.increase}
           className="grid h-10 w-10 place-items-center disabled:opacity-50"
           disabled={pending}
           onClick={() => update(current + 1)}
@@ -53,7 +61,7 @@ export function CartLineControls({ itemId, quantity }: { itemId: string; quantit
         </button>
       </div>
       <button
-        aria-label="Remove item"
+        aria-label={labels.remove}
         className="grid h-10 w-10 place-items-center rounded-md text-red-600 hover:bg-red-50"
         disabled={pending}
         onClick={remove}

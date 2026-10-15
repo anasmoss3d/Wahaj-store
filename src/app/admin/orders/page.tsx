@@ -1,8 +1,10 @@
 import { OrderStatus } from "@prisma/client";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { OrdersAutoRefresh } from "@/components/admin/orders-auto-refresh";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatDate } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import { PERMISSIONS } from "@/lib/rbac";
 
@@ -36,10 +38,14 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     orderBy: { createdAt: "desc" },
     take: 100
   });
+  const latestAt = orders[0]?.createdAt.toISOString() ?? null;
 
   return (
     <AdminShell>
-      <h1 className="text-3xl font-bold text-concrete-900">Orders</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="text-3xl font-bold text-concrete-900">Orders</h1>
+        <OrdersAutoRefresh initialLatestAt={latestAt} />
+      </div>
       <form className="mt-6 grid gap-3 rounded-md border border-concrete-100 bg-white p-4 shadow-soft md:grid-cols-[1fr_220px_auto]">
         <input
           className="min-h-11 rounded-md border border-concrete-200 px-3"
@@ -59,7 +65,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           Filter
         </button>
       </form>
-      <div className="mt-8 overflow-hidden rounded-md border border-concrete-100 bg-white shadow-soft">
+      <div className="mt-8 overflow-x-auto rounded-md border border-concrete-100 bg-white shadow-soft">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-concrete-50 text-concrete-500">
             <tr>
@@ -85,7 +91,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 <td className="p-4">
                   <StatusBadge status={order.status} />
                 </td>
-                <td className="p-4">{order.createdAt.toLocaleDateString("en-EG")}</td>
+                <td className="p-4">{formatDate(order.createdAt, "en")}</td>
               </tr>
             ))}
           </tbody>
