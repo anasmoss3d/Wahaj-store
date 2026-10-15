@@ -3,8 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
 }
 
 enum UserStatus {
@@ -14,6 +20,7 @@ enum UserStatus {
 
 enum PaymentMethod {
   CASH_ON_DELIVERY
+  INSTAPAY
 }
 
 enum OrderStatus {
@@ -42,6 +49,7 @@ enum NotificationChannel {
   SMS
   EMAIL
   PUSH
+  TELEGRAM
 }
 
 enum NotificationStatus {
@@ -64,6 +72,8 @@ model User {
   carts        Cart[]
   orders       Order[]
   sessions     CustomerSession[]
+  wishlist     WishlistItem[]
+  reviews      Review[]
 
   @@index([createdAt])
 }
@@ -197,6 +207,8 @@ model Product {
   addons          ProductAddon[]
   cartItems       CartItem[]
   orderItems      OrderItem[]
+  wishlistedBy    WishlistItem[]
+  reviews         Review[]
 
   @@index([active, featured, sortOrder])
   @@index([categoryId])
@@ -282,6 +294,7 @@ model Cart {
   user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   sessionId String?
   status    CartStatus @default(ACTIVE)
+  couponCode String?
   items     CartItem[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -334,8 +347,11 @@ model Order {
   notes         String?
   internalNotes String?
   paymentMethod PaymentMethod        @default(CASH_ON_DELIVERY)
+  paymentReceiptUrl String?
   status        OrderStatus          @default(PENDING)
   subtotal      Decimal              @db.Decimal(10, 2)
+  discountTotal Decimal              @default(0) @db.Decimal(10, 2)
+  couponCode    String?
   shippingCost  Decimal              @db.Decimal(10, 2)
   grandTotal    Decimal              @db.Decimal(10, 2)
   currency      String               @default("EGP")
@@ -419,6 +435,60 @@ model StoreSetting {
   value       Json
   description String?
   updatedAt   DateTime @updatedAt
+}
+
+model Coupon {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  type        CouponType @default(PERCENT)
+  value       Decimal    @db.Decimal(10, 2)
+  minSubtotal Decimal    @default(0) @db.Decimal(10, 2)
+  maxUses     Int?
+  usedCount   Int        @default(0)
+  active      Boolean    @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([active])
+}
+
+model ShippingRate {
+  id          String   @id @default(cuid())
+  governorate String   @unique
+  rate        Decimal  @db.Decimal(10, 2)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  rating    Int
+  title     String?
+  body      String
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([productId, approved, createdAt])
 }
 
 model NotificationEvent {

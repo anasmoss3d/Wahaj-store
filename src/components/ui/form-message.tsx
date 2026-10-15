@@ -21,15 +21,17 @@ export function FormMessage({ error, success }: { error?: string; success?: stri
 
 export function SubmitButton({
   children,
-  className
+  className,
+  pendingLabel = "Saving..."
 }: {
   children: React.ReactNode;
   className?: string;
+  pendingLabel?: string;
 }) {
   const { pending } = useFormStatus();
   return (
     <Button className={className} disabled={pending} type="submit">
-      {pending ? "Saving..." : children}
+      {pending ? pendingLabel : children}
     </Button>
   );
 }

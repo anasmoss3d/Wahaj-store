@@ -8,41 +8,42 @@ import {
 } from "@/app/actions/auth";
 import { Field, Input } from "@/components/ui/input";
 import { FormMessage, SubmitButton } from "@/components/ui/form-message";
+import type { Dictionary } from "@/lib/i18n";
 
-export function CustomerLoginForm() {
+export function CustomerLoginForm({ labels }: { labels: Dictionary }) {
   const [state, action] = useActionState(customerLoginAction, {});
   return (
     <form action={action} className="grid gap-4">
       <FormMessage error={state.error} success={state.success} />
-      <Field label="Email or phone">
+      <Field label={labels.emailOrPhone}>
         <Input name="email" required />
       </Field>
-      <Field label="Password">
+      <Field label={labels.password}>
         <Input name="password" required type="password" />
       </Field>
-      <SubmitButton>Sign in</SubmitButton>
+      <SubmitButton pendingLabel={labels.saving}>{labels.signIn}</SubmitButton>
     </form>
   );
 }
 
-export function CustomerRegisterForm() {
+export function CustomerRegisterForm({ labels }: { labels: Dictionary }) {
   const [state, action] = useActionState(customerRegisterAction, {});
   return (
     <form action={action} className="grid gap-4">
       <FormMessage error={state.error} success={state.success} />
-      <Field label="Name">
+      <Field label={labels.name}>
         <Input name="name" required />
       </Field>
-      <Field label="Phone">
+      <Field label={labels.phoneNumber}>
         <Input name="phone" required />
       </Field>
-      <Field label="Email">
+      <Field label={`${labels.email} (${labels.optional})`}>
         <Input name="email" type="email" />
       </Field>
-      <Field label="Password">
+      <Field label={labels.password}>
         <Input name="password" required type="password" />
       </Field>
-      <SubmitButton>Create account</SubmitButton>
+      <SubmitButton pendingLabel={labels.saving}>{labels.createAccount}</SubmitButton>
     </form>
   );
 }

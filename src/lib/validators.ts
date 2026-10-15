@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { CouponType, OrderStatus, PaymentMethod } from "@prisma/client";
 import { z } from "zod";
 
 const phoneRegex = /^(\+?2)?01[0125][0-9]{8}$/;
@@ -38,7 +38,8 @@ export const checkoutSchema = z.object({
   city: z.string().min(2).max(80),
   fullAddress: z.string().min(8).max(500),
   building: z.string().max(120).optional().or(z.literal("")),
-  notes: z.string().max(500).optional().or(z.literal(""))
+  notes: z.string().max(500).optional().or(z.literal("")),
+  paymentMethod: z.nativeEnum(PaymentMethod).default("CASH_ON_DELIVERY")
 });
 
 export const categoryInputSchema = z.object({
@@ -110,9 +111,77 @@ export const orderStatusInputSchema = z.object({
   note: z.string().max(500).optional().or(z.literal(""))
 });
 
+const optionalDate = z
+  .string()
+  .max(40)
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => (value ? new Date(value) : undefined));
+
+export const couponInputSchema = z
+  .object({
+    code: z.string().min(3).max(24),
+    type: z.nativeEnum(CouponType),
+    value: z.coerce.number().min(0.01).max(999999),
+    minSubtotal: z.coerce.number().min(0).max(999999).default(0),
+    maxUses: z.coerce.number().int().min(1).max(1000000).optional().or(z.literal("")),
+    active: z.boolean().default(true),
+    startsAt: optionalDate,
+    endsAt: optionalDate
+  })
+  .refine((data) => (data.type === "PERCENT" ? data.value <= 100 : true), {
+    message: "Percent coupons cannot exceed 100.",
+    path: ["value"]
+  });
+
+export const couponApplySchema = z.object({
+  code: z.string().min(1).max(32)
+});
+
+export const shippingRateInputSchema = z.object({
+  governorate: z.string().min(2).max(80),
+  rate: z.coerce.number().min(0).max(999999),
+  active: z.boolean().default(true)
+});
+
+export const reviewInputSchema = z.object({
+  productId: idSchema,
+  name: z.string().min(2).max(80),
+  rating: z.coerce.number().int().min(1).max(5),
+  title: z.string().max(120).optional().or(z.literal("")),
+  body: z.string().min(4).max(1000)
+});
+
+export const wishlistInputSchema = z.object({
+  productId: idSchema
+});
+
+export const orderCustomerEditSchema = z.object({
+  customerName: z.string().min(2).max(120),
+  phone: z.string().regex(phoneRegex, "Enter a valid Egyptian mobile number."),
+  whatsapp: z.string().regex(phoneRegex).optional().or(z.literal("")),
+  email: z.string().email().optional().or(z.literal("")),
+  governorate: z.string().min(2).max(80),
+  city: z.string().min(2).max(80),
+  fullAddress: z.string().min(8).max(500),
+  building: z.string().max(120).optional().or(z.literal("")),
+  notes: z.string().max(500).optional().or(z.literal("")),
+  internalNotes: z.string().max(1000).optional().or(z.literal(""))
+});
+
+export const orderItemEditSchema = z.object({
+  itemId: idSchema,
+  quantity: z.coerce.number().int().min(0).max(99)
+});
+
 export const storeSettingsSchema = z.object({
   shippingFlatRate: z.coerce.number().min(0).max(999999),
+  freeShippingThreshold: z.coerce.number().min(0).max(999999).default(0),
   whatsappNumber: z.string().max(40).optional().or(z.literal("")),
+  instapayHandle: z.string().max(120).optional().or(z.literal("")),
+  instapayQrImage: z.string().max(500).optional().or(z.literal("")),
+  instapayLink: z.string().url().max(500).optional().or(z.literal("")),
+  telegramChatId: z.string().max(64).optional().or(z.literal("")),
   primaryColor: z.string().regex(hexRegex),
   secondaryColor: z.string().regex(hexRegex),
   heroImage: z.string().max(500).optional().or(z.literal("")),

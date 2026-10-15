@@ -1,6 +1,6 @@
 # Wahaj Store
 
-Wahaj is a production-oriented modular monolith e-commerce app for handmade concrete decor. It supports product colors with real variant images, dashboard-managed add-ons, persistent carts, cash on delivery checkout, order tracking, and an admin dashboard.
+Wahaj is a production-oriented modular monolith e-commerce app for handmade concrete decor. It supports product colors with real variant images, dashboard-managed add-ons, coupons, governorate-based shipping, persistent carts, cash on delivery checkout, order tracking, wishlist, product reviews, Arabic/English RTL localization, and an admin dashboard with sales analytics.
 
 ## Stack
 
@@ -27,13 +27,15 @@ npm install
 cp .env.example .env
 ```
 
-3. Start PostgreSQL:
+3. Start the bundled PostgreSQL (no system install; binaries and data live in the project):
 
 ```bash
-docker compose up -d
+npm run db:start
 ```
 
-4. Apply the database schema and seed demo data:
+Leave it running in a separate terminal. The data directory is `.pgdata/` (git-ignored).
+
+4. Apply the database schema and seed demo data (in another terminal):
 
 ```bash
 npm run db:deploy
@@ -78,11 +80,13 @@ Customer flow:
 
 Admin flow:
 
-1. Sign in at `/admin/login`.
-2. Open dashboard overview at `/admin`.
+1. Sign in at `/admin/login` (seeded admin: `admin@wahaj.local` / `ChangeMe123!` — change after first login environment setup).
+2. Open dashboard overview at `/admin` (date-filtered revenue chart, best sellers, top colors/add-ons, AOV).
 3. Manage orders at `/admin/orders`.
 4. Create products at `/admin/products/new`.
-5. Manage categories, colors, add-ons, and settings from the admin sidebar.
+5. Manage categories, colors, add-ons (create, edit, delete with usage guards) from the admin sidebar.
+6. Manage coupons at `/admin/coupons` (percent/fixed, min subtotal, usage limits, dates) and shipping rates per governorate at `/admin/settings`.
+7. Moderate product reviews at `/admin/reviews`.
 
 ## Architecture
 
@@ -142,44 +146,64 @@ The server does not trust client supplied prices.
 
 ## Image Storage
 
-The current implementation stores uploaded admin images under `public/uploads` for local development. The code keeps upload handling isolated in `src/lib/files.ts`, so production can replace this with S3, Cloudflare R2, Vercel Blob, or another object storage provider without changing product logic.
+The implementation stores uploaded admin images under `public/uploads` for local development. When `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set (Vercel/production), uploads go to the configured Supabase Storage bucket instead and the product logic does not change. The switch lives in `src/lib/files.ts`.
 
 Images are rendered through Next Image where practical and use modern formats through Next image configuration.
 
 ## Localization
 
-The project includes an initial localization scaffold in `src/lib/i18n.ts` with Arabic and English locale metadata. The current visible UI is mostly English with Arabic brand text, and the layout is ready to expand to full RTL Arabic routes.
+The project ships with a full Arabic (default, RTL) + English (LTR) dictionary in `src/lib/i18n.ts`. The locale is stored in the `wahaj_locale` cookie and switched from the header toggle; `src/app/layout.tsx` renders the matching `lang`/`dir`. Storefront chrome, homepage, product listing/detail, cart, and checkout are translated. The admin dashboard stays in English.
 
 ## Notifications
 
 `NotificationEvent` stores future notification work for WhatsApp, SMS, email, and push. Version 1 intentionally does not connect WhatsApp Business API; order creation records the architecture hook without sending messages.
 
-## Deployment
+## Deployment (Vercel + Supabase)
 
-Recommended deployment:
+Vercel's filesystem is ephemeral, so production uses Supabase for both the database and image storage. The code switches automatically based on environment variables.
 
-1. Provision PostgreSQL.
-2. Configure environment variables on the host.
-3. Run migrations:
+### 1. Create the Supabase project
+
+1. Sign up at `https://supabase.com` and create a new project.
+2. Open **Project Settings → Database** and copy:
+   - **Connection string (pooler, port 6543)** in the form `postgresql://postgres.[ref]:[password]@...:6543/postgres?pgbouncer=true` → this is `DATABASE_URL`.
+   - **Connection string (direct, port 5432)** → this is `DIRECT_URL` (used for migrations).
+3. Open **Storage** and create a **public** bucket named `wahaj-images` (or set `SUPABASE_STORAGE_BUCKET` to your name).
+4. Open **Project Settings → API** and copy the **Project URL** (`SUPABASE_URL`) and the **service_role key** (`SUPABASE_SERVICE_ROLE_KEY`, server-side only, never expose it).
+
+### 2. Create the production database schema and admin (from your machine)
 
 ```bash
+DATABASE_URL="<direct-5432-url>" DIRECT_URL="<direct-5432-url>" \
+  ADMIN_EMAIL="you@example.com" ADMIN_PASSWORD="<strong-password>" \
+  npm run db:deploy
+DATABASE_URL="<direct-5432-url>" DIRECT_URL="<direct-5432-url>" \
+  ADMIN_EMAIL="you@example.com" ADMIN_PASSWORD="<strong-password>" \
+  npm run db:seed
+```
+
+### 3. Deploy to Vercel
+
+1. Push this repo to GitHub and import it in Vercel.
+2. Set these environment variables in Vercel (**Production**):
+   - `DATABASE_URL` = pooler URL (port 6543, with `?pgbouncer=true`)
+   - `DIRECT_URL` = direct URL (port 5432)
+   - `APP_URL` = `https://your-store.vercel.app`
+   - `SESSION_SECRET` = random 32+ characters: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` (only needed if you seed again)
+   - `UPLOAD_MAX_MB` = `5`
+   - `NEXT_PUBLIC_DEFAULT_LOCALE` = `ar`
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` = `wahaj-images`
+3. Deploy. The build runs `prisma generate && next build`; no database writes happen at build time.
+
+### Local development (bundled Postgres)
+
+```bash
+npm run db:start   # project-local PostgreSQL, data in .pgdata/ (git-ignored)
 npm run db:deploy
-```
-
-4. Seed the first admin:
-
-```bash
 npm run db:seed
+npm run dev
 ```
-
-5. Build and start:
-
-```bash
-npm run build
-npm run start
-```
-
-For Vercel, use a managed PostgreSQL provider and object storage for uploaded images.
 
 ## Verification
 
@@ -200,17 +224,22 @@ Results:
 - Prisma schema valid
 - Lint passed
 - TypeScript passed
-- 9 Vitest tests passed
+- 16 Vitest tests passed (pricing, validators, coupons/shipping)
 - Production build passed
 - Production dependency audit found 0 vulnerabilities
 
-Database-backed browser flows were not run in this environment because Docker, `psql`, and a running PostgreSQL service were not available on the machine. The app includes `docker-compose.yml`, migrations, and seed data so those flows can be run as soon as PostgreSQL is available.
+End-to-end browser verification against the bundled Postgres (all passed):
+
+- Homepage renders in Arabic RTL with locale toggle
+- Product page: color switch updates image + price (350 → 365 EGP)
+- Add to cart, cart coupon `WELCOME10` (−10%)
+- Checkout with governorate select + live shipping preview
+- COD order `WAH-20261010-0001` created with server-side snapshot (subtotal 365, discount 36.50, Cairo shipping 65, total 393.50)
+- Order tracking page with timeline
+- Admin login + dashboard analytics reflecting the test order (test order removed afterwards)
 
 ## Recommended Next Features
 
-- Replace local uploads with object storage.
-- Add full Arabic translations and locale routes.
-- Add admin edit forms for existing categories, colors, and add-ons.
-- Add coupons and delivery by governorate.
-- Add Playwright end-to-end tests once PostgreSQL is available in CI.
+- Replace local uploads and embedded Postgres with managed PostgreSQL + object storage in production.
+- Add Playwright end-to-end tests (the flows above were verified manually in-browser).
 - Add WhatsApp Business API notifications.

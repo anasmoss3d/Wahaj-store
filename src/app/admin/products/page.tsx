@@ -27,7 +27,7 @@ export default async function AdminProductsPage() {
           <Plus size={18} /> New product
         </ButtonLink>
       </div>
-      <div className="mt-8 overflow-hidden rounded-md border border-concrete-100 bg-white shadow-soft">
+      <div className="mt-8 overflow-x-auto rounded-md border border-concrete-100 bg-white shadow-soft">
         <table className="w-full min-w-[860px] text-start text-sm">
           <thead className="bg-concrete-50 text-concrete-500">
             <tr>

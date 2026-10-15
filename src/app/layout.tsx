@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Cairo, Inter } from "next/font/google";
 import "@/app/globals.css";
+import { direction, getLocale } from "@/lib/i18n";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-latin" });
+const cairo = Cairo({ subsets: ["arabic", "latin"], variable: "--font-arabic", weight: ["400", "600", "700", "800"] });
 
 export const metadata: Metadata = {
   title: {
@@ -18,10 +20,11 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
   return (
-    <html dir="ltr" lang="en">
-      <body className={inter.className}>{children}</body>
+    <html dir={direction(locale)} lang={locale}>
+      <body className={`${inter.variable} ${cairo.variable}`}>{children}</body>
     </html>
   );
 }

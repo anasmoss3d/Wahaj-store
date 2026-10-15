@@ -4,6 +4,8 @@ import { StorefrontHeader } from "@/components/storefront/header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getOrderForViewer } from "@/lib/orders";
 import { formatMoney } from "@/lib/money";
+import { getDictionary, getLocale, statusLabels } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +21,11 @@ export default async function OrderDetailsPage({
   searchParams: SearchParams;
 }) {
   const [{ orderNumber }, query] = await Promise.all([params, searchParams]);
-  const order = await getOrderForViewer(orderNumber, query.key);
+  const [order, dict, locale] = await Promise.all([
+    getOrderForViewer(orderNumber, query.key),
+    getDictionary(),
+    getLocale()
+  ]);
 
   return (
     <>
@@ -27,25 +33,21 @@ export default async function OrderDetailsPage({
       <main className="mx-auto max-w-5xl px-4 py-10">
         {!order ? (
           <div className="rounded-md border border-concrete-100 bg-white p-8 text-center shadow-soft">
-            <h1 className="text-2xl font-bold text-concrete-900">Order not available</h1>
-            <p className="mt-3 text-concrete-600">
-              Sign in to the matching account or open the secure tracking link from checkout.
-            </p>
+            <h1 className="text-2xl font-bold text-concrete-900">{dict.orderNotAvailable}</h1>
+            <p className="mt-3 leading-7 text-concrete-600">{dict.orderNotAvailableHint}</p>
           </div>
         ) : (
           <div className="grid gap-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-wahaj-gold">
-                  Order tracking
-                </p>
+                <p className="text-sm font-semibold text-wahaj-gold">{dict.orderTracking}</p>
                 <h1 className="mt-2 text-4xl font-bold text-concrete-900">{order.orderNumber}</h1>
               </div>
-              <StatusBadge status={order.status} />
+              <StatusBadge locale={locale} status={order.status} />
             </div>
 
             <section className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
-              <h2 className="text-xl font-bold text-concrete-900">Timeline</h2>
+              <h2 className="text-xl font-bold text-concrete-900">{dict.timeline}</h2>
               <ol className="mt-5 grid gap-4">
                 {ORDER_STATUS_FLOW.map((status) => {
                   const reached = order.history.some((item) => item.status === status);
@@ -54,15 +56,21 @@ export default async function OrderDetailsPage({
                     <li className="flex items-start gap-3" key={status}>
                       <span
                         className={cn(
-                          "mt-1 h-4 w-4 rounded-full border",
+                          "mt-1 h-4 w-4 shrink-0 rounded-full border",
                           reached || current ? "border-wahaj-teal bg-wahaj-teal" : "border-concrete-300"
                         )}
                       />
                       <span>
-                        <span className="block font-semibold text-concrete-900">{status}</span>
+                        <span className="block font-semibold text-concrete-900">
+                          {statusLabels[locale][status]}
+                        </span>
                         <span className="text-sm text-concrete-500">
-                          {order.history.find((item) => item.status === status)?.createdAt.toLocaleString("en-EG") ||
-                            "Waiting"}
+                          {order.history.find((item) => item.status === status)?.createdAt
+                            ? formatDateTime(
+                                order.history.find((item) => item.status === status)!.createdAt,
+                                locale
+                              )
+                            : dict.waiting}
                         </span>
                       </span>
                     </li>
@@ -72,7 +80,7 @@ export default async function OrderDetailsPage({
             </section>
 
             <section className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
-              <h2 className="text-xl font-bold text-concrete-900">Items</h2>
+              <h2 className="text-xl font-bold text-concrete-900">{dict.items}</h2>
               <div className="mt-5 grid gap-4">
                 {order.items.map((item) => (
                   <article className="rounded-md bg-concrete-50 p-4" key={item.id}>
@@ -80,7 +88,7 @@ export default async function OrderDetailsPage({
                       <div>
                         <h3 className="font-bold text-concrete-900">{item.productName}</h3>
                         <p className="text-sm text-concrete-500">
-                          {item.sku} · {item.selectedColorName} · Qty {item.quantity}
+                          {item.sku} · {item.selectedColorName} · {dict.qty} {item.quantity}
                         </p>
                       </div>
                       <p className="font-bold text-concrete-900">{formatMoney(item.total)}</p>
@@ -99,15 +107,30 @@ export default async function OrderDetailsPage({
               </div>
               <dl className="mt-5 grid gap-2 border-t border-concrete-100 pt-4 text-sm">
                 <div className="flex justify-between">
-                  <dt>Subtotal</dt>
+                  <dt>{dict.subtotal}</dt>
                   <dd>{formatMoney(order.subtotal)}</dd>
                 </div>
+                {Number(order.discountTotal) > 0 ? (
+                  <div className="flex justify-between text-emerald-700">
+                    <dt>
+                      {dict.discount}
+                      {order.couponCode ? ` (${order.couponCode})` : ""}
+                    </dt>
+                    <dd>−{formatMoney(order.discountTotal)}</dd>
+                  </div>
+                ) : null}
                 <div className="flex justify-between">
-                  <dt>Shipping</dt>
+                  <dt>{dict.shipping}</dt>
                   <dd>{formatMoney(order.shippingCost)}</dd>
                 </div>
+                <div className="flex justify-between">
+                  <dt>{dict.paymentMethod}</dt>
+                  <dd className="font-semibold">
+                    {order.paymentMethod === "INSTAPAY" ? dict.instapayName : dict.cashOnDelivery}
+                  </dd>
+                </div>
                 <div className="flex justify-between text-lg font-bold">
-                  <dt>Total</dt>
+                  <dt>{dict.grandTotal}</dt>
                   <dd>{formatMoney(order.grandTotal)}</dd>
                 </div>
               </dl>

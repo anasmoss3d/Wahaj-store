@@ -8,4 +8,6 @@ coverage
 .env.*.local
 public/uploads
 *.log
+.pgdata/
 prisma/migrations/*/migration_lock.toml
+.vercel

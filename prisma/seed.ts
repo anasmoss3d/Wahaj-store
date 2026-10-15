@@ -5,9 +5,10 @@ const prisma = new PrismaClient();
 
 const permissions = [
   ["dashboard:read", "View admin dashboard"],
-  ["products:manage", "Manage products, colors, categories, add-ons, and images"],
+  ["products:manage", "Manage products, colors, categories, add-ons, images, and reviews"],
   ["orders:manage", "Manage orders and order statuses"],
-  ["settings:manage", "Manage store settings"],
+  ["marketing:manage", "Manage coupons and promotions"],
+  ["settings:manage", "Manage store settings and shipping rates"],
   ["admins:manage", "Manage admin users and roles"],
   ["audit:read", "Read audit log"]
 ] as const;
@@ -117,6 +118,11 @@ async function main() {
     addonRows.set(name, addon.id);
   }
 
+  await prisma.cartItemAddon.deleteMany();
+  await prisma.cartItem.deleteMany();
+  await prisma.cart.deleteMany();
+  await prisma.review.deleteMany();
+  await prisma.wishlistItem.deleteMany();
   await prisma.product.deleteMany();
 
   const productData = [
@@ -267,11 +273,16 @@ async function main() {
 
   const settings = {
     shippingFlatRate: 65,
+    freeShippingThreshold: 1500,
     whatsappNumber: "+201000000000",
     primaryColor: "#187d6d",
     secondaryColor: "#c7924d",
     heroImage: "/seed/black-luxury-set.jpg",
-    contactEmail: "hello@wahaj.local"
+    contactEmail: "hello@wahaj.local",
+    instapayHandle: "anasmoss3d@instapay",
+    instapayQrImage: "",
+    instapayLink: "https://ipn.eg/S/anasmoss3d/instapay/4PjSoL",
+    telegramChatId: ""
   };
 
   for (const [key, value] of Object.entries(settings)) {
@@ -279,6 +290,58 @@ async function main() {
       where: { key },
       update: { value },
       create: { key, value }
+    });
+  }
+
+  const governorateRates: Array<[string, number]> = [
+    ["Cairo", 65],
+    ["Giza", 65],
+    ["Qalyubia", 70],
+    ["Alexandria", 80],
+    ["Dakahlia", 80],
+    ["Sharqia", 80],
+    ["Port Said", 90],
+    ["Suez", 90],
+    ["Ismailia", 90],
+    ["Aswan", 110],
+    ["Luxor", 100]
+  ];
+  for (const [governorate, rate] of governorateRates) {
+    await prisma.shippingRate.upsert({
+      where: { governorate },
+      update: { rate: new Prisma.Decimal(rate), active: true },
+      create: { governorate, rate: new Prisma.Decimal(rate), active: true }
+    });
+  }
+
+  const coupons: Array<{
+    code: string;
+    type: "PERCENT" | "FIXED";
+    value: number;
+    minSubtotal: number;
+    maxUses: number | null;
+  }> = [
+    { code: "WELCOME10", type: "PERCENT", value: 10, minSubtotal: 200, maxUses: 500 },
+    { code: "WAHAJ50", type: "FIXED", value: 50, minSubtotal: 600, maxUses: 200 }
+  ];
+  for (const coupon of coupons) {
+    await prisma.coupon.upsert({
+      where: { code: coupon.code },
+      update: {
+        type: coupon.type,
+        value: new Prisma.Decimal(coupon.value),
+        minSubtotal: new Prisma.Decimal(coupon.minSubtotal),
+        maxUses: coupon.maxUses,
+        active: true
+      },
+      create: {
+        code: coupon.code,
+        type: coupon.type,
+        value: new Prisma.Decimal(coupon.value),
+        minSubtotal: new Prisma.Decimal(coupon.minSubtotal),
+        maxUses: coupon.maxUses,
+        active: true
+      }
     });
   }
 }
