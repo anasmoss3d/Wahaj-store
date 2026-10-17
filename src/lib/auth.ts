@@ -27,10 +27,13 @@ async function getCurrentUserUncached() {
     return null;
   }
 
-  await prisma.customerSession.update({
-    where: { id: session.id },
-    data: { lastSeenAt: new Date() }
-  });
+  // Throttle lastSeenAt writes to once every 5 minutes to avoid a DB write on every request
+  if (session.lastSeenAt < new Date(Date.now() - 5 * 60 * 1000)) {
+    prisma.customerSession.update({
+      where: { id: session.id },
+      data: { lastSeenAt: new Date() }
+    }).catch(() => {});
+  }
 
   return session.user;
 }
@@ -62,10 +65,13 @@ async function getCurrentAdminUncached(): Promise<AdminPrincipal | null> {
     return null;
   }
 
-  await prisma.adminSession.update({
-    where: { id: session.id },
-    data: { lastSeenAt: new Date() }
-  });
+  // Throttle lastSeenAt writes to once every 5 minutes to avoid a DB write on every request
+  if (session.lastSeenAt < new Date(Date.now() - 5 * 60 * 1000)) {
+    prisma.adminSession.update({
+      where: { id: session.id },
+      data: { lastSeenAt: new Date() }
+    }).catch(() => {});
+  }
 
   return session.adminUser;
 }

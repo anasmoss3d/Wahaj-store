@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { ProductCustomizer } from "@/components/storefront/product-customizer";
 import { ReviewForm, Stars } from "@/components/storefront/reviews";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 type Params = Promise<{ slug: string }>;
 
-async function getProduct(slug: string) {
+const getProduct = cache(async function getProduct(slug: string) {
   return prisma.product.findFirst({
     where: { slug, active: true },
     include: {
@@ -32,11 +33,11 @@ async function getProduct(slug: string) {
       }
     }
   });
-}
+});
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({ where: { slug } });
+  const product = await getProduct(slug);
   if (!product) return {};
 
   return {
