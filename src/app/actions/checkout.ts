@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createOrderFromCart } from "@/lib/orders";
 import { assertSameOrigin } from "@/lib/security";
-import { saveReceiptImage, uploadLimitBytes } from "@/lib/files";
+import { saveUploadedImage, uploadLimitBytes } from "@/lib/files";
 import { checkoutSchema } from "@/lib/validators";
 import { getLocale } from "@/lib/i18n";
 import type { ActionState } from "@/app/actions/auth";
@@ -66,7 +66,7 @@ export async function checkoutAction(
               : "Invalid receipt photo (JPG/PNG/WebP up to 5MB)."
         };
       }
-      paymentReceiptUrl = await saveReceiptImage(receipt);
+      paymentReceiptUrl = await saveUploadedImage(receipt);
     }
 
     const { order, trackingToken } = await createOrderFromCart({ ...parsed, paymentReceiptUrl });

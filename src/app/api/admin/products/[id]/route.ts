@@ -20,11 +20,9 @@ export async function PUT(request: Request, { params }: Params) {
     const parsed = adminProductSchema.parse(await request.json());
 
     const product = await prisma.$transaction(async (tx) => {
-      await Promise.all([
-        tx.productImage.deleteMany({ where: { productId } }),
-        tx.productColor.deleteMany({ where: { productId } }),
-        tx.productAddon.deleteMany({ where: { productId } }),
-      ]);
+      await tx.productImage.deleteMany({ where: { productId } });
+      await tx.productColor.deleteMany({ where: { productId } });
+      await tx.productAddon.deleteMany({ where: { productId } });
 
       return tx.product.update({
         where: { id: productId },
