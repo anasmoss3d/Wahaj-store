@@ -230,36 +230,30 @@ export async function createOrderFromCart(input: {
   // Telegram alert for the store owner. Must never fail the checkout:
   // notifyTelegramNewOrder swallows its own errors and just records them.
   try {
-    const full = await prisma.order.findUnique({
-      where: { id: result.id },
-      include: { items: { include: { addons: true } } }
+    await notifyTelegramNewOrder({
+      orderId: result.id,
+      orderNumber: result.orderNumber,
+      customerName: result.customerName,
+      phone: result.phone,
+      governorate: result.governorate,
+      city: result.city,
+      fullAddress: result.fullAddress,
+      paymentMethod: result.paymentMethod,
+      paymentReceiptUrl: result.paymentReceiptUrl,
+      couponCode: result.couponCode,
+      subtotal: result.subtotal.toString(),
+      discountTotal: result.discountTotal.toString(),
+      shippingCost: result.shippingCost.toString(),
+      grandTotal: result.grandTotal.toString(),
+      createdAt: result.createdAt,
+      items: orderItems.map(({ item, addons, calculated }) => ({
+        productName: item.product.name,
+        quantity: item.quantity,
+        colorName: item.productColor.color.name,
+        addons: addons.map((addon) => addon.name),
+        total: calculated.total.toString()
+      }))
     });
-    if (full && full.items) {
-      await notifyTelegramNewOrder({
-        orderId: full.id,
-        orderNumber: full.orderNumber,
-        customerName: full.customerName,
-        phone: full.phone,
-        governorate: full.governorate,
-        city: full.city,
-        fullAddress: full.fullAddress,
-        paymentMethod: full.paymentMethod,
-        paymentReceiptUrl: full.paymentReceiptUrl,
-        couponCode: full.couponCode,
-        subtotal: full.subtotal.toString(),
-        discountTotal: full.discountTotal.toString(),
-        shippingCost: full.shippingCost.toString(),
-        grandTotal: full.grandTotal.toString(),
-        createdAt: full.createdAt,
-        items: full.items.map((item) => ({
-          productName: item.productName,
-          quantity: item.quantity,
-          colorName: item.selectedColorName,
-          addons: item.addons.map((addon) => addon.addonName),
-          total: item.total.toString()
-        }))
-      });
-    }
   } catch {
     // Notification failures are recorded inside notifyTelegramNewOrder.
   }

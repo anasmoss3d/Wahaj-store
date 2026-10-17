@@ -101,3 +101,38 @@ export async function saveUploadedImage(file: File) {
   await writeFile(path.join(uploadDir, filename), optimized);
   return `/uploads/${filename}`;
 }
+
+/**
+ * Save a receipt image without the heavy Sharp optimization pipeline.
+ * Receipts are only viewed by admins and don't need resize/WebP conversion.
+ * This avoids blocking the checkout response for 200-2000ms.
+ */
+export async function saveReceiptImage(file: File) {
+  const extension = safeImageExtension(file.type);
+  if (!extension) throw new Error("Only JPG, PNG, WebP, or AVIF images are allowed.");
+  if (file.size > uploadLimitBytes()) throw new Error("Image file is too large.");
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const filename = `${Date.now()}-${randomBytes(8).toString("hex")}.${extension}`;
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET || "wahaj-images";
+  if (supabaseUrl && serviceKey) {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const { error } = await supabase.storage.from(bucket).upload(`receipts/${filename}`, buffer, {
+      contentType: file.type,
+      upsert: false
+    });
+    if (error) throw new Error(`Image upload failed: ${error.message}`);
+    const { data } = supabase.storage.from(bucket).getPublicUrl(`receipts/${filename}`);
+    return data.publicUrl;
+  }
+
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  await mkdir(uploadDir, { recursive: true });
+
+  await writeFile(path.join(uploadDir, filename), buffer);
+  return `/uploads/${filename}`;
+}
