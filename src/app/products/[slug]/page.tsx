@@ -89,13 +89,16 @@ export default async function ProductPage({ params }: { params: Params }) {
     additionalPrice: Number(item.additionalPrice),
     imageUrl: getProductColorImageUrl(product.slug, item.color.name, item.imageUrl)
   }));
-  const galleryImages =
-    product.slug.trim().toLowerCase() === "vase"
+  const galleryImages = [
+    { url: product.mainImage, alt: product.name },
+    ...product.images.map((image) => ({ url: image.url, alt: image.alt || product.name })),
+    ...(product.slug.trim().toLowerCase() === "vase"
       ? colorOptions.map((color) => ({
           url: color.imageUrl,
           alt: `${product.name} in ${color.name}`
         }))
-      : product.images.map((image) => ({ url: image.url, alt: image.alt || product.name }));
+      : [])
+  ];
 
   return (
     <>

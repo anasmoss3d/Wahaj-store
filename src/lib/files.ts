@@ -83,6 +83,10 @@ export async function saveUploadedImage(file: File) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || "wahaj-images";
+  if (Boolean(supabaseUrl) !== Boolean(serviceKey)) {
+    throw new Error("Permanent image storage is only partially configured.");
+  }
+
   if (supabaseUrl && serviceKey) {
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, serviceKey);
@@ -93,6 +97,10 @@ export async function saveUploadedImage(file: File) {
     if (error) throw new Error(`Image upload failed: ${error.message}`);
     const { data } = supabase.storage.from(bucket).getPublicUrl(`products/${filename}`);
     return data.publicUrl;
+  }
+
+  if (process.env.VERCEL) {
+    throw new Error("Permanent image storage is not configured for production uploads.");
   }
 
   const uploadDir = path.join(process.cwd(), "public", "uploads");

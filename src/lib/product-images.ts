@@ -14,6 +14,13 @@ export function getProductColorImageUrl(slug: string, colorName: string, fallbac
   if (!isRibbedVase(slug)) return fallback;
 
   const normalizedColor = colorName.trim().toLowerCase().replace(/\s+/g, " ");
+  if (
+    normalizedColor === "custom color" &&
+    (/^https?:\/\//i.test(fallback) || fallback.startsWith("/uploads/"))
+  ) {
+    return fallback;
+  }
+
   return ribbedVaseImages[normalizedColor] ?? fallback;
 }
 
