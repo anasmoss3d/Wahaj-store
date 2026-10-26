@@ -46,8 +46,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           }
         }
       : {}),
-    ...(one(params.featured) ? { featured: true } : {}),
-    ...(one(params.available) ? { stockQuantity: { gt: 0 } } : {})
+    ...(one(params.featured) ? { featured: true } : {})
   };
 
   const orderBy: Prisma.ProductOrderByWithRelationInput[] =
@@ -125,10 +124,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                 <option value="price-desc">{dict.priceHighLow}</option>
                 <option value="popular">{dict.popular}</option>
               </select>
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm font-medium">
-              <input className="h-5 w-5 accent-wahaj-teal" defaultChecked={Boolean(one(params.available))} name="available" type="checkbox" value="1" />
-              {dict.inStock}
             </label>
             <label className="inline-flex items-center gap-2 text-sm font-medium">
               <input className="h-5 w-5 accent-wahaj-teal" defaultChecked={Boolean(one(params.featured))} name="featured" type="checkbox" value="1" />

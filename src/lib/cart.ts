@@ -5,6 +5,7 @@ import { validateCouponForSubtotal } from "@/lib/coupons";
 import { prisma } from "@/lib/db";
 import { calculateLinePrice, cartItemSignature } from "@/lib/pricing";
 import { getOrCreateCartSessionId, readCookie, CART_COOKIE } from "@/lib/sessions";
+import { getProductColorImageUrl } from "@/lib/product-images";
 
 export type CartViewItem = {
   id: string;
@@ -112,7 +113,11 @@ async function getCartViewUncached(): Promise<CartView> {
       productName: row.product.name,
       slug: row.product.slug,
       sku: row.product.sku,
-      image: row.productColor.imageUrl || row.product.mainImage,
+      image: getProductColorImageUrl(
+        row.product.slug,
+        row.productColor.color.name,
+        row.productColor.imageUrl || row.product.mainImage
+      ),
       colorName: row.productColor.color.name,
       colorHex: row.productColor.color.hexCode,
       addons: addonModels.map((addon) => ({
@@ -186,7 +191,7 @@ export async function addCartItem(input: {
   }
 
   if (product.stockQuantity < input.quantity) {
-    throw new Error("Selected quantity is not available in stock.");
+    throw new Error("We couldn't add that quantity. Please try a smaller amount.");
   }
 
   const existingItems = await prisma.cartItem.findMany({
@@ -225,7 +230,11 @@ export async function addCartItem(input: {
       productId: input.productId,
       productColorId: input.productColorId,
       quantity: input.quantity,
-      displayImage: product.colors[0].imageUrl,
+      displayImage: getProductColorImageUrl(
+        product.slug,
+        product.colors[0].color.name,
+        product.colors[0].imageUrl || product.mainImage
+      ),
       addons: {
         create: input.productAddonIds.map((productAddonId) => ({
           productAddonId
@@ -245,7 +254,7 @@ export async function updateCartItemQuantity(id: string, quantity: number) {
   });
   if (!item) throw new Error("Cart item not found.");
   if (item.product.stockQuantity < quantity) {
-    throw new Error("Selected quantity is not available in stock.");
+    throw new Error("We couldn't update to that quantity. Please try a smaller amount.");
   }
 
   return prisma.cartItem.update({

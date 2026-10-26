@@ -9,6 +9,7 @@ import { calculateLinePrice, canMoveOrderStatus } from "@/lib/pricing";
 import { CART_COOKIE, hashToken, readCookie } from "@/lib/sessions";
 import { notifyTelegramNewOrder } from "@/lib/notifications";
 import { resolveShippingCents } from "@/lib/shipping";
+import { getProductColorImageUrl } from "@/lib/product-images";
 
 export function createTrackingToken() {
   return randomBytes(24).toString("base64url");
@@ -92,7 +93,7 @@ export async function createOrderFromCart(input: {
       throw new Error(`${item.product.name} is no longer available.`);
     }
     if (item.product.stockQuantity < item.quantity) {
-      throw new Error(`${item.product.name} does not have enough stock.`);
+      throw new Error(`${item.product.name} cannot be ordered in that quantity right now.`);
     }
 
     const addons = item.addons.map((entry) => entry.productAddon.addon);
@@ -168,7 +169,11 @@ export async function createOrderFromCart(input: {
               finalUnitPrice: calculated.unitPrice,
               quantity: item.quantity,
               total: calculated.total,
-              imageUrl: item.productColor.imageUrl || item.product.mainImage,
+              imageUrl: getProductColorImageUrl(
+                item.product.slug,
+                item.productColor.color.name,
+                item.productColor.imageUrl || item.product.mainImage
+              ),
               addons: {
                 create: addons.map((addon) => ({
                   addonName: addon.name,
@@ -203,7 +208,7 @@ export async function createOrderFromCart(input: {
           data: { stockQuantity: { decrement: item.quantity } }
         });
         if (stock.count === 0) {
-          throw new Error(`${item.product.name} does not have enough stock.`);
+          throw new Error(`${item.product.name} cannot be ordered in that quantity right now.`);
         }
       }
 

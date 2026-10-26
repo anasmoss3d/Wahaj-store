@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, ShoppingBag, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingBag, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,11 @@ type AddonOption = {
   imageUrl?: string | null;
 };
 
+type GalleryImage = {
+  url: string;
+  alt: string;
+};
+
 const formatter = new Intl.NumberFormat("en-EG", {
   style: "currency",
   currency: "EGP",
@@ -39,11 +44,13 @@ export function ProductCustomizer({
   product,
   colors,
   addons,
+  images,
   labels
 }: {
   product: ProductOption;
   colors: ColorOption[];
   addons: AddonOption[];
+  images: GalleryImage[];
   labels: {
     madeToOrder: string;
     startsAt: string;
@@ -55,10 +62,15 @@ export function ProductCustomizer({
     addToCart: string;
     buyNow: string;
     added: string;
+    previousImage: string;
+    nextImage: string;
+    viewImage: string;
+    productPhotos: string;
   };
 }) {
   const router = useRouter();
   const [selectedColorId, setSelectedColorId] = useState(colors[0]?.id ?? "");
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
@@ -66,6 +78,17 @@ export function ProductCustomizer({
   const [isPending, startTransition] = useTransition();
 
   const selectedColor = colors.find((color) => color.id === selectedColorId) ?? colors[0];
+  const galleryImages = useMemo(() => {
+    const candidates = [
+      ...(selectedColor
+        ? [{ url: selectedColor.imageUrl, alt: `${product.name} in ${selectedColor.name}` }]
+        : []),
+      ...images
+    ];
+    return Array.from(new Map(candidates.map((image) => [image.url, image])).values());
+  }, [images, product.name, selectedColor]);
+  const activeImage = galleryImages.find((image) => image.url === selectedImageUrl) ?? galleryImages[0];
+  const activeImageIndex = galleryImages.findIndex((image) => image.url === activeImage?.url);
   const selectedAddons = addons.filter((addon) => selectedAddonIds.includes(addon.id));
   const unitPrice = useMemo(
     () =>
@@ -80,6 +103,12 @@ export function ProductCustomizer({
     setSelectedAddonIds((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     );
+  }
+
+  function moveGallery(step: number) {
+    if (galleryImages.length < 2) return;
+    const nextIndex = (activeImageIndex + step + galleryImages.length) % galleryImages.length;
+    setSelectedImageUrl(galleryImages[nextIndex].url);
   }
 
   function addToCart(goToCheckout = false) {
@@ -113,16 +142,69 @@ export function ProductCustomizer({
 
   return (
     <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-concrete-100">
-        {selectedColor ? (
-          <Image
-            alt={`${product.name} in ${selectedColor.name}`}
-            className="object-cover"
-            fill
-            priority
-            sizes="(min-width: 1024px) 55vw, 100vw"
-            src={selectedColor.imageUrl}
-          />
+      <div className="grid content-start gap-3">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-concrete-100">
+          {activeImage ? (
+            <Image
+              alt={activeImage.alt}
+              className="object-cover"
+              fill
+              priority
+              sizes="(min-width: 1024px) 55vw, 100vw"
+              src={activeImage.url}
+            />
+          ) : null}
+          {galleryImages.length > 1 ? (
+            <>
+              <button
+                aria-label={labels.previousImage}
+                className="absolute start-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-concrete-900 shadow-soft transition hover:bg-white"
+                onClick={() => moveGallery(-1)}
+                type="button"
+              >
+                <ChevronLeft className="rtl:rotate-180" size={22} />
+              </button>
+              <button
+                aria-label={labels.nextImage}
+                className="absolute end-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-concrete-900 shadow-soft transition hover:bg-white"
+                onClick={() => moveGallery(1)}
+                type="button"
+              >
+                <ChevronRight className="rtl:rotate-180" size={22} />
+              </button>
+              <span
+                aria-live="polite"
+                className="absolute bottom-3 end-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-concrete-800"
+              >
+                {activeImageIndex + 1} / {galleryImages.length}
+              </span>
+            </>
+          ) : null}
+        </div>
+        {galleryImages.length > 1 ? (
+          <div
+            aria-label={labels.productPhotos}
+            className="flex gap-2 overflow-x-auto pb-1"
+            role="group"
+          >
+            {galleryImages.map((image, index) => (
+              <button
+                aria-label={`${labels.viewImage} ${index + 1}: ${image.alt}`}
+                aria-pressed={image.url === activeImage?.url}
+                className={cn(
+                  "relative h-20 w-16 shrink-0 overflow-hidden rounded border-2 transition",
+                  image.url === activeImage?.url
+                    ? "border-wahaj-teal"
+                    : "border-transparent hover:border-concrete-300"
+                )}
+                key={image.url}
+                onClick={() => setSelectedImageUrl(image.url)}
+                type="button"
+              >
+                <Image alt="" className="object-cover" fill sizes="64px" src={image.url} />
+              </button>
+            ))}
+          </div>
         ) : null}
       </div>
       <div className="grid content-start gap-7">
@@ -155,7 +237,10 @@ export function ProductCustomizer({
                     : "border-concrete-200 bg-white"
                 )}
                 key={color.id}
-                onClick={() => setSelectedColorId(color.id)}
+                onClick={() => {
+                  setSelectedColorId(color.id);
+                  setSelectedImageUrl(color.imageUrl);
+                }}
                 type="button"
               >
                 <span

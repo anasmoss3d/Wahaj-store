@@ -13,10 +13,6 @@ export function productJsonLd(product: Product) {
       "@type": "Offer",
       priceCurrency: "EGP",
       price: product.basePrice.toString(),
-      availability:
-        product.stockQuantity > 0
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
       url: absoluteUrl(`/products/${product.slug}`)
     }
   };

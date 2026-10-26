@@ -3,6 +3,7 @@ import type { Product } from "@prisma/client";
 import { ButtonLink } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import { getDictionary } from "@/lib/i18n";
+import { getProductMainImageUrl } from "@/lib/product-images";
 
 export async function ProductCard({ product }: { product: Product }) {
   const dict = await getDictionary();
@@ -15,7 +16,7 @@ export async function ProductCard({ product }: { product: Product }) {
             className="object-cover transition duration-500 group-hover:scale-105"
             fill
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-            src={product.mainImage}
+            src={getProductMainImageUrl(product.slug, product.mainImage)}
           />
         </div>
       </a>

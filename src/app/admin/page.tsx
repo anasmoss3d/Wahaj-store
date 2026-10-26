@@ -23,8 +23,9 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
   await requireAdmin(PERMISSIONS.DASHBOARD_READ);
   const params = await searchParams;
 
-  const todayKey = cairoDayKey(new Date());
-  const defaultFromKey = cairoDayKey(new Date(Date.now() - 29 * 24 * 3600 * 1000));
+  const now = new Date();
+  const todayKey = cairoDayKey(now);
+  const defaultFromKey = cairoDayKey(new Date(now.getTime() - 29 * 24 * 3600 * 1000));
   const fromKey = validDay(one(params.from)) ?? defaultFromKey;
   const toKey = validDay(one(params.to)) ?? todayKey;
   const from = cairoDayStart(fromKey);

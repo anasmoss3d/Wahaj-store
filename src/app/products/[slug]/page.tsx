@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n";
 import { productJsonLd } from "@/lib/seo";
+import { getProductColorImageUrl } from "@/lib/product-images";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,20 @@ export default async function ProductPage({ params }: { params: Params }) {
   const jsonLd = productJsonLd(product);
   const avg = ratingAgg._avg.rating ?? 0;
   const reviewCount = ratingAgg._count.rating;
+  const colorOptions = product.colors.map((item) => ({
+    id: item.id,
+    name: item.color.name,
+    hexCode: item.color.hexCode,
+    additionalPrice: Number(item.additionalPrice),
+    imageUrl: getProductColorImageUrl(product.slug, item.color.name, item.imageUrl)
+  }));
+  const galleryImages =
+    product.slug.trim().toLowerCase() === "vase"
+      ? colorOptions.map((color) => ({
+          url: color.imageUrl,
+          alt: `${product.name} in ${color.name}`
+        }))
+      : product.images.map((image) => ({ url: image.url, alt: image.alt || product.name }));
 
   return (
     <>
@@ -100,13 +115,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             name: product.name,
             basePrice: Number(product.basePrice)
           }}
-          colors={product.colors.map((item) => ({
-            id: item.id,
-            name: item.color.name,
-            hexCode: item.color.hexCode,
-            additionalPrice: Number(item.additionalPrice),
-            imageUrl: item.imageUrl
-          }))}
+          colors={colorOptions}
           addons={product.addons.map((item) => ({
             id: item.id,
             name: item.addon.name,
@@ -114,6 +123,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             price: Number(item.addon.price),
             imageUrl: item.addon.imageUrl
           }))}
+          images={galleryImages}
           labels={{
             madeToOrder: dict.madeToOrder,
             startsAt: dict.startsAt,
@@ -124,7 +134,11 @@ export default async function ProductPage({ params }: { params: Params }) {
             total: dict.total,
             addToCart: dict.addToCart,
             buyNow: dict.buyNow,
-            added: dict.addedToCart
+            added: dict.addedToCart,
+            previousImage: dict.previousImage,
+            nextImage: dict.nextImage,
+            viewImage: dict.viewImage,
+            productPhotos: dict.productPhotos
           }}
         />
         <section className="mt-12 grid gap-8 lg:grid-cols-[1fr_320px]">
@@ -135,10 +149,6 @@ export default async function ProductPage({ params }: { params: Params }) {
           <aside className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
             <p className="text-sm font-semibold text-concrete-500">{dict.category}</p>
             <p className="mt-1 text-lg font-bold text-concrete-900">{product.category.name}</p>
-            <p className="mt-5 text-sm font-semibold text-concrete-500">{dict.stock}</p>
-            <p className="mt-1 text-lg font-bold text-concrete-900">
-              {product.stockQuantity > 0 ? `${product.stockQuantity} ${dict.available}` : dict.outOfStock}
-            </p>
             <p className="mt-5 text-sm font-semibold text-concrete-500">SKU</p>
             <p className="mt-1 text-lg font-bold text-concrete-900">{product.sku}</p>
           </aside>
