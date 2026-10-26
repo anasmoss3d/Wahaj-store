@@ -20,5 +20,11 @@ export function compact<T>(items: Array<T | null | undefined>) {
 
 export function absoluteUrl(path = "") {
   const appUrl = process.env.APP_URL || "http://localhost:3000";
-  return `${appUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+  try {
+    const url = new URL(path);
+    if (url.protocol === "http:" || url.protocol === "https:") return url.toString();
+  } catch {
+    // Resolve relative paths against the storefront URL below.
+  }
+  return new URL(path.startsWith("/") ? path : `/${path}`, appUrl).toString();
 }

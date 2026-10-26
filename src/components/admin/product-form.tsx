@@ -251,10 +251,13 @@ export function ProductForm({
         {step === "images" ? (
           <div className="grid gap-5">
             <UploadField
-              label="Main image"
+              label="Storefront main photo"
               value={product.mainImage}
               onChange={(value) => update("mainImage", value)}
             />
+            <p className="-mt-3 text-sm text-concrete-500">
+              This photo appears on product cards and when the product link is shared.
+            </p>
             <div className="grid gap-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold">Gallery</h2>
@@ -280,6 +283,7 @@ export function ProductForm({
                       const gallery = product.gallery.slice();
                       gallery[index] = { ...image, url };
                       update("gallery", gallery);
+                      if (product.mainImage === image.url) update("mainImage", url);
                     }}
                   />
                   <Field label="Alt text">
@@ -292,14 +296,27 @@ export function ProductForm({
                       }}
                     />
                   </Field>
-                  <Button
-                    className="self-end"
-                    onClick={() => update("gallery", product.gallery.filter((_, itemIndex) => itemIndex !== index))}
-                    type="button"
-                    variant="ghost"
-                  >
-                    Remove
-                  </Button>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <Button
+                      aria-pressed={product.mainImage === image.url}
+                      className="self-end"
+                      disabled={!image.url}
+                      onClick={() => update("mainImage", image.url)}
+                      type="button"
+                      variant={product.mainImage === image.url ? "secondary" : "ghost"}
+                    >
+                      {product.mainImage === image.url ? <Check size={16} /> : null}
+                      {product.mainImage === image.url ? "Main photo" : "Use as main photo"}
+                    </Button>
+                    <Button
+                      className="self-end"
+                      onClick={() => update("gallery", product.gallery.filter((_, itemIndex) => itemIndex !== index))}
+                      type="button"
+                      variant="ghost"
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -337,11 +354,24 @@ export function ProductForm({
                           }
                         />
                       </Field>
-                      <UploadField
-                        label="Variant image"
-                        value={selected.imageUrl}
-                        onChange={(imageUrl) => updateColor(color.id, { imageUrl })}
-                      />
+                      <div className="grid content-end gap-2">
+                        <UploadField
+                          label="Variant image"
+                          value={selected.imageUrl}
+                          onChange={(imageUrl) => updateColor(color.id, { imageUrl })}
+                        />
+                        <Button
+                          aria-pressed={product.mainImage === selected.imageUrl}
+                          className="justify-self-start"
+                          disabled={!selected.imageUrl}
+                          onClick={() => update("mainImage", selected.imageUrl)}
+                          type="button"
+                          variant={product.mainImage === selected.imageUrl ? "secondary" : "ghost"}
+                        >
+                          {product.mainImage === selected.imageUrl ? <Check size={16} /> : null}
+                          {product.mainImage === selected.imageUrl ? "Main photo" : "Use as main photo"}
+                        </Button>
+                      </div>
                     </div>
                   ) : null}
                 </div>

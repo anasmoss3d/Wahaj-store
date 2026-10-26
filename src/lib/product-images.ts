@@ -24,7 +24,6 @@ export function getProductColorImageUrl(slug: string, colorName: string, fallbac
   return ribbedVaseImages[normalizedColor] ?? fallback;
 }
 
-export function getProductMainImageUrl(slug: string, fallback: string) {
-  if (!isRibbedVase(slug)) return fallback;
-  return ribbedVaseImages["blush pink"];
+export function getProductMainImageUrl(_slug: string, mainImage: string) {
+  return mainImage;
 }

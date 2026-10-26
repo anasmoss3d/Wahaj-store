@@ -33,10 +33,8 @@ describe("product image mapping", () => {
     );
   });
 
-  it("uses the prepared pink photo on vase product cards", () => {
-    expect(getProductMainImageUrl("Vase", "/old-main.webp")).toBe(
-      "/products/vases/blush-pink.webp"
-    );
+  it("uses the selected main photo on product cards", () => {
+    expect(getProductMainImageUrl("Vase", "/chosen-main.webp")).toBe("/chosen-main.webp");
     expect(getProductMainImageUrl("tray", "/tray.webp")).toBe("/tray.webp");
   });
 });
