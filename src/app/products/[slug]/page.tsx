@@ -131,6 +131,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             madeToOrder: dict.madeToOrder,
             startsAt: dict.startsAt,
             chooseColor: dict.chooseColor,
+            customColorHint: dict.customColorHint,
             addExtras: dict.addExtras,
             included: dict.included,
             quantity: dict.quantity,

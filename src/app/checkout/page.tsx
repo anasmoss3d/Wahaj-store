@@ -41,6 +41,9 @@ export default async function CheckoutPage() {
                 discountCents={cart.discountCents}
                 flatRate={settings.shippingFlatRate}
                 governorates={[...GOVERNORATES]}
+                hasCustomColor={cart.items.some(
+                  (item) => item.colorName.trim().toLowerCase() === "custom color"
+                )}
                 instapay={{ handle: settings.instapayHandle, qrImage: settings.instapayQrImage, link: settings.instapayLink }}
                 labels={dict}
                 rates={rates.map((row) => ({

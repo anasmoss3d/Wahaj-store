@@ -55,6 +55,7 @@ export function ProductCustomizer({
     madeToOrder: string;
     startsAt: string;
     chooseColor: string;
+    customColorHint: string;
     addExtras: string;
     included: string;
     quantity: string;
@@ -256,6 +257,14 @@ export function ProductCustomizer({
               </button>
             ))}
           </div>
+          {selectedColor?.name.trim().toLowerCase() === "custom color" ? (
+            <p
+              className="rounded-md border border-wahaj-gold/30 bg-wahaj-gold/10 px-4 py-3 text-sm leading-7 text-concrete-700"
+              role="note"
+            >
+              {labels.customColorHint}
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-3">

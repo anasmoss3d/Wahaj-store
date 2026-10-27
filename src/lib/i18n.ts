@@ -63,6 +63,10 @@ const en = {
   applyFilters: "Apply filters",
   customize: "Customize",
   chooseColor: "Choose color",
+  customColorHint:
+    "For a custom color, write your preferred color and marble pattern in the order notes at checkout. Use the marble styles in the Custom Color photo as inspiration.",
+  customColorNotesHint:
+    "Please include your preferred color and marble pattern for the custom color, using the Custom Color photo as inspiration.",
   previousImage: "Previous image",
   nextImage: "Next image",
   viewImage: "View image",
@@ -241,6 +245,10 @@ const ar: Dictionary = {
   applyFilters: "تطبيق الفلاتر",
   customize: "تخصيص",
   chooseColor: "اختر اللون",
+  customColorHint:
+    "لو اخترت لون مخصص، اكتب اللون وشكل العروق الرخامية اللي تفضله في ملاحظات الطلب عند الدفع. تقدر تستلهم الشكل من صورة Custom Color.",
+  customColorNotesHint:
+    "اكتب اللون وشكل العروق الرخامية اللي تفضله للقطعة ذات اللون المخصص، مستلهمًا من صورة Custom Color.",
   previousImage: "الصورة السابقة",
   nextImage: "الصورة التالية",
   viewImage: "عرض الصورة",

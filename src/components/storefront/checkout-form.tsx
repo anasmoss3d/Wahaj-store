@@ -17,6 +17,7 @@ export function CheckoutForm({
   thresholdCents,
   subtotalCents,
   discountCents,
+  hasCustomColor,
   instapay
 }: {
   labels: Dictionary;
@@ -26,6 +27,7 @@ export function CheckoutForm({
   thresholdCents: number;
   subtotalCents: number;
   discountCents: number;
+  hasCustomColor: boolean;
   instapay: { handle: string; qrImage: string; link: string };
 }) {
   const [state, action] = useActionState(checkoutAction, {});
@@ -99,7 +101,7 @@ export function CheckoutForm({
         <Field label={labels.building}>
           <Input name="building" />
         </Field>
-        <Field label={labels.notes}>
+        <Field label={labels.notes} hint={hasCustomColor ? labels.customColorNotesHint : undefined}>
           <Textarea name="notes" />
         </Field>
 
