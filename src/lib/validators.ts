@@ -20,7 +20,10 @@ export const registerSchema = z.object({
 
 export const addToCartSchema = z.object({
   productId: idSchema,
-  productColorId: idSchema,
+  productColorId: z
+    .union([idSchema, z.null(), z.literal("")])
+    .default(null)
+    .transform((value) => (value === "" ? null : value)),
   productAddonIds: z.array(idSchema).max(12).default([]),
   quantity: z.number().int().min(1).max(99)
 });
@@ -69,7 +72,7 @@ export const addonInputSchema = z.object({
 
 export const adminProductSchema = z.object({
   name: z.string().min(2).max(160),
-  slug: z.string().min(2).max(180),
+  slug: z.string().max(180).optional(),
   description: z.string().min(12).max(4000),
   basePrice: z.coerce.number().min(1).max(999999),
   categoryId: idSchema,
@@ -92,6 +95,7 @@ export const adminProductSchema = z.object({
       })
     )
     .default([]),
+  // Colors are optional: a product can publish with no color choices at all.
   colors: z
     .array(
       z.object({
@@ -102,7 +106,7 @@ export const adminProductSchema = z.object({
         sortOrder: z.coerce.number().int().default(0)
       })
     )
-    .min(1),
+    .default([]),
   addonIds: z.array(idSchema).default([])
 });
 

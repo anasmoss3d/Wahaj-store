@@ -22,8 +22,11 @@ export default async function EditProductPage({ params }: { params: Params }) {
       }
     }),
     prisma.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-    prisma.color.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-    prisma.addon.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] })
+    // Only active colors are shown (a muted color would vanish from the
+    // storefront). A product that already holds a muted color can still be
+    // opened; saving without selecting it drops that hidden option.
+    prisma.color.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
+    prisma.addon.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] })
   ]);
 
   if (!product) notFound();

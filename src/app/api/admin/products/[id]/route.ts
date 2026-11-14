@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
+import { assertActiveColors, resolveProductSlug } from "@/lib/product-utils";
 import { adminProductSchema, idSchema } from "@/lib/validators";
 
 type Params = {
@@ -18,6 +19,21 @@ export async function PUT(request: Request, { params }: Params) {
     const { id } = await params;
     const productId = idSchema.parse(id);
     const parsed = adminProductSchema.parse(await request.json());
+    const current = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, slug: true }
+    });
+    if (!current) {
+      return NextResponse.json({ ok: false, message: "Product not found." }, { status: 404 });
+    }
+    await assertActiveColors(parsed.colors.map((color) => color.colorId));
+    const slug = await resolveProductSlug({
+      name: parsed.name,
+      sku: parsed.sku,
+      slug: parsed.slug,
+      productSlug: current.slug,
+      productId
+    });
 
     const product = await prisma.$transaction(async (tx) => {
       await tx.productImage.deleteMany({ where: { productId } });
@@ -28,7 +44,7 @@ export async function PUT(request: Request, { params }: Params) {
         where: { id: productId },
         data: {
           name: parsed.name,
-          slug: parsed.slug,
+          slug,
           description: parsed.description,
           basePrice: new Prisma.Decimal(parsed.basePrice),
           categoryId: parsed.categoryId,
@@ -82,9 +98,16 @@ export async function PUT(request: Request, { params }: Params) {
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${product.slug}`);
+    revalidatePath(`/products/${current.slug}`);
     revalidatePath("/admin/products");
     return NextResponse.json({ ok: true, productId: product.id });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { ok: false, message: "This slug or SKU is already in use." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { ok: false, message: error instanceof Error ? error.message : "Could not update product." },
       { status: 400 }

@@ -7,7 +7,7 @@ import { Check, Eye, ImageIcon, Package, Palette, Search, Sparkles } from "lucid
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { UploadField } from "@/components/admin/upload-field";
-import { cn, slugify } from "@/lib/utils";
+import { cn, suggestProductSlug } from "@/lib/utils";
 
 type Option = { id: string; name: string; hexCode?: string; price?: string };
 type ProductInitial = {
@@ -82,6 +82,12 @@ export function ProductForm({
   const router = useRouter();
   const [step, setStep] = useState<(typeof steps)[number]["key"]>("basic");
   const [product, setProduct] = useState<ProductInitial>(initial ?? emptyProduct);
+  // A non-ASCII (Arabic) or missing slug is treated as "untouched", so the
+  // auto-slug keeps refreshing until the admin edits the field by hand.
+  const [slugTouched, setSlugTouched] = useState<boolean>(() => {
+    const slug = (initial?.slug ?? "").trim();
+    return Boolean(initial?.id) && slug.length > 0 && /^[a-zA-Z0-9-]+$/.test(slug);
+  });
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -135,17 +141,21 @@ export function ProductForm({
   function save() {
     setMessage("");
     startTransition(async () => {
+      // The checkbox set is the source of truth: every selected color is
+      // saved/kept as active. This prevents the old "checked but hidden in
+      // the storefront" state that used to cause product pages to 404.
+      const payload = { ...product, colors: product.colors.map((item) => ({ ...item, active: true })) };
       const response = await fetch(
         product.id ? `/api/admin/products/${product.id}` : "/api/admin/products",
         {
           method: product.id ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(product)
+          body: JSON.stringify(payload)
         }
       );
-      const payload = (await response.json()) as { ok: boolean; productId?: string; message?: string };
-      if (!payload.ok) {
-        setMessage(payload.message ?? "Could not save product.");
+      const json = (await response.json()) as { ok: boolean; productId?: string; message?: string };
+      if (!json.ok) {
+        setMessage(json.message ?? "Could not save product.");
         return;
       }
       router.push("/admin/products");
@@ -184,16 +194,38 @@ export function ProductForm({
                   value={product.name}
                   onChange={(event) => {
                     const name = event.target.value;
-                    update("name", name);
-                    if (!product.slug) update("slug", slugify(name));
+                    setProduct((current) => ({
+                      ...current,
+                      name,
+                      slug: slugTouched ? current.slug : suggestProductSlug(name, current.sku)
+                    }));
                   }}
                 />
               </Field>
-              <Field label="Slug">
-                <Input value={product.slug} onChange={(event) => update("slug", event.target.value)} />
+              <Field
+                hint="Auto-generated. Leave blank and the server will create one from the name/SKU."
+                label="Slug"
+              >
+                <Input
+                  value={product.slug}
+                  onChange={(event) => {
+                    setSlugTouched(true);
+                    update("slug", event.target.value);
+                  }}
+                />
               </Field>
               <Field label="SKU">
-                <Input value={product.sku} onChange={(event) => update("sku", event.target.value)} />
+                <Input
+                  value={product.sku}
+                  onChange={(event) => {
+                    const sku = event.target.value;
+                    setProduct((current) => ({
+                      ...current,
+                      sku,
+                      slug: slugTouched ? current.slug : suggestProductSlug(current.name, sku)
+                    }));
+                  }}
+                />
               </Field>
               <Field label="Category">
                 <select
@@ -325,6 +357,11 @@ export function ProductForm({
 
         {step === "colors" ? (
           <div className="grid gap-4">
+            <p className="text-sm text-concrete-500">
+              {product.colors.length === 0
+                ? "No colors selected — this is fine. You can still save and publish the product without colors."
+                : `${product.colors.length} color option(s) selected. Customers without a color requirement can skip this step entirely.`}
+            </p>
             {colors.map((color) => {
               const selected = product.colors.find((item) => item.colorId === color.id);
               return (

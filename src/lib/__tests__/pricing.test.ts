@@ -49,6 +49,9 @@ describe("pricing", () => {
     expect(cartItemSignature("p1", "black", ["gold"])).not.toBe(
       cartItemSignature("p1", "white", ["gold"])
     );
+    // No-color items stay distinct from every colored variant.
+    expect(cartItemSignature("p1", null, [])).toBe(cartItemSignature("p1", "", []));
+    expect(cartItemSignature("p1", null, [])).not.toBe(cartItemSignature("p1", "black", []));
   });
 
   it("allows forward order status movement and cancellation before delivery", () => {

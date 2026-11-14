@@ -14,8 +14,8 @@ export type CartViewItem = {
   slug: string;
   sku: string;
   image: string;
-  colorName: string;
-  colorHex: string;
+  colorName: string | null;
+  colorHex: string | null;
   addons: Array<{ id: string; name: string; price: Prisma.Decimal }>;
   quantity: number;
   unitPrice: Prisma.Decimal;
@@ -100,7 +100,7 @@ async function getCartViewUncached(): Promise<CartView> {
     const addonModels = row.addons.map((entry) => entry.productAddon.addon);
     const calculated = calculateLinePrice({
       basePrice: row.product.basePrice,
-      colorAdditionalPrice: row.productColor.additionalPrice,
+      colorAdditionalPrice: row.productColor?.additionalPrice ?? 0,
       addonPrices: addonModels.map((addon) => addon.price),
       quantity: row.quantity
     });
@@ -113,13 +113,15 @@ async function getCartViewUncached(): Promise<CartView> {
       productName: row.product.name,
       slug: row.product.slug,
       sku: row.product.sku,
-      image: getProductColorImageUrl(
-        row.product.slug,
-        row.productColor.color.name,
-        row.productColor.imageUrl || row.product.mainImage
-      ),
-      colorName: row.productColor.color.name,
-      colorHex: row.productColor.color.hexCode,
+      image: row.productColor
+        ? getProductColorImageUrl(
+            row.product.slug,
+            row.productColor.color.name,
+            row.productColor.imageUrl || row.product.mainImage
+          )
+        : row.product.mainImage,
+      colorName: row.productColor?.color.name ?? null,
+      colorHex: row.productColor?.color.hexCode ?? null,
       addons: addonModels.map((addon) => ({
         id: addon.id,
         name: addon.name,
@@ -161,18 +163,23 @@ export const getCartView = cache(getCartViewUncached);
 
 export async function addCartItem(input: {
   productId: string;
-  productColorId: string;
+  productColorId?: string | null;
   productAddonIds: string[];
   quantity: number;
 }) {
   const cart = await findActiveCart(true);
   if (!cart) throw new Error("Could not create cart.");
 
+  const productColorId = input.productColorId ?? null;
+  const hasColor = Boolean(productColorId);
+
   const product = await prisma.product.findFirst({
     where: { id: input.productId, active: true },
     include: {
       colors: {
-        where: { id: input.productColorId, active: true },
+        where: hasColor
+          ? { id: productColorId!, active: true, color: { active: true } }
+          : { active: true, color: { active: true } },
         include: { color: true }
       },
       addons: {
@@ -182,8 +189,12 @@ export async function addCartItem(input: {
     }
   });
 
-  if (!product || product.colors.length !== 1) {
+  if (!product) throw new Error("This product is no longer available.");
+  if (hasColor && product.colors.length !== 1) {
     throw new Error("This product option is no longer available.");
+  }
+  if (!hasColor && product.colors.length > 0) {
+    throw new Error("This product has colors — please choose one.");
   }
 
   if (input.productAddonIds.length !== product.addons.length) {
@@ -194,18 +205,20 @@ export async function addCartItem(input: {
     throw new Error("We couldn't add that quantity. Please try a smaller amount.");
   }
 
+  const color = product.colors[0] ?? null;
+
   const existingItems = await prisma.cartItem.findMany({
     where: {
       cartId: cart.id,
       productId: input.productId,
-      productColorId: input.productColorId
+      productColorId
     },
     include: { addons: true }
   });
 
   const requestedSignature = cartItemSignature(
     input.productId,
-    input.productColorId,
+    productColorId,
     input.productAddonIds
   );
   const existing = existingItems.find(
@@ -228,13 +241,15 @@ export async function addCartItem(input: {
     data: {
       cartId: cart.id,
       productId: input.productId,
-      productColorId: input.productColorId,
+      productColorId,
       quantity: input.quantity,
-      displayImage: getProductColorImageUrl(
-        product.slug,
-        product.colors[0].color.name,
-        product.colors[0].imageUrl || product.mainImage
-      ),
+      displayImage: color
+        ? getProductColorImageUrl(
+            product.slug,
+            color.color.name,
+            color.imageUrl || product.mainImage
+          )
+        : product.mainImage,
       addons: {
         create: input.productAddonIds.map((productAddonId) => ({
           productAddonId

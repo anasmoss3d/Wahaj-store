@@ -10,8 +10,10 @@ export default async function NewProductPage() {
   await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
   const [categories, colors, addons] = await Promise.all([
     prisma.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-    prisma.color.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-    prisma.addon.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] })
+    // Only active colors: selecting a muted color would make the product
+    // invisible in the storefront, so it cannot be picked in the first place.
+    prisma.color.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
+    prisma.addon.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] })
   ]);
 
   return (

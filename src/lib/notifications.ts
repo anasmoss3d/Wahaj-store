@@ -4,7 +4,7 @@ import { getStoreSettings } from "@/lib/settings";
 export type OrderNotificationItem = {
   productName: string;
   quantity: number;
-  colorName: string;
+  colorName: string | null;
   addons: string[];
   total: string;
 };
@@ -37,7 +37,7 @@ export function buildTelegramOrderMessage(order: OrderNotification, adminBaseUrl
     `🏠 ${order.fullAddress}`,
     "",
     ...order.items.flatMap((item) => [
-      `▪️ ${item.productName} × ${item.quantity} — ${item.colorName}`,
+      `▪️ ${item.productName} × ${item.quantity}${item.colorName ? ` — ${item.colorName}` : ""}`,
       ...(item.addons.length ? [`   ➕ ${item.addons.join("، ")}`] : []),
       `   💰 ${item.total} جنيه`
     ]),

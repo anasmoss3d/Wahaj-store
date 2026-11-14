@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
+import { assertActiveColors, resolveProductSlug } from "@/lib/product-utils";
 import { adminProductSchema } from "@/lib/validators";
 
 export async function POST(request: Request) {
@@ -12,11 +13,17 @@ export async function POST(request: Request) {
     await assertSameOrigin(request.method);
     const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
     const parsed = adminProductSchema.parse(await request.json());
+    await assertActiveColors(parsed.colors.map((color) => color.colorId));
+    const slug = await resolveProductSlug({
+      name: parsed.name,
+      sku: parsed.sku,
+      slug: parsed.slug
+    });
 
     const product = await prisma.product.create({
       data: {
         name: parsed.name,
-        slug: parsed.slug,
+        slug,
         description: parsed.description,
         basePrice: new Prisma.Decimal(parsed.basePrice),
         categoryId: parsed.categoryId,
@@ -68,9 +75,16 @@ export async function POST(request: Request) {
 
     revalidatePath("/");
     revalidatePath("/products");
+    revalidatePath(`/products/${product.slug}`);
     revalidatePath("/admin/products");
     return NextResponse.json({ ok: true, productId: product.id });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { ok: false, message: "This slug or SKU is already in use." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { ok: false, message: error instanceof Error ? error.message : "Could not save product." },
       { status: 400 }

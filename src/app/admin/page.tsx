@@ -74,7 +74,9 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
     }),
     prisma.orderItem.groupBy({
       by: ["selectedColorName"],
-      where: { order: { createdAt: range, status: { not: "CANCELLED" } } },
+      // No-color order items snapshot "" — they are not a color, so keep
+      // this list about actual colors only.
+      where: { selectedColorName: { not: "" }, order: { createdAt: range, status: { not: "CANCELLED" } } },
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5

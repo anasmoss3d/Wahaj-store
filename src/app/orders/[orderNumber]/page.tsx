@@ -88,7 +88,9 @@ export default async function OrderDetailsPage({
                       <div>
                         <h3 className="font-bold text-concrete-900">{item.productName}</h3>
                         <p className="text-sm text-concrete-500">
-                          {item.sku} · {item.selectedColorName} · {dict.qty} {item.quantity}
+                          {item.sku}
+                          {item.selectedColorName ? ` · ${item.selectedColorName}` : ""}
+                          {` · ${dict.qty} ${item.quantity}`}
                         </p>
                       </div>
                       <p className="font-bold text-concrete-900">{formatMoney(item.total)}</p>

@@ -41,10 +41,10 @@ export function calculateLinePrice(selection: PriceSelection) {
 
 export function cartItemSignature(
   productId: string,
-  productColorId: string,
+  productColorId: string | null,
   productAddonIds: string[]
 ) {
-  return [productId, productColorId, ...productAddonIds.slice().sort()].join(":");
+  return [productId, productColorId ?? "", ...productAddonIds.slice().sort()].join(":");
 }
 
 export function canMoveOrderStatus(from: string, to: string) {

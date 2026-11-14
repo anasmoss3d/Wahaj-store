@@ -59,7 +59,7 @@ export default async function ProductPage({ params }: { params: Params }) {
     getCurrentUser(),
     getDictionary()
   ]);
-  if (!product || product.colors.length === 0) notFound();
+  if (!product) notFound();
 
   const [reviews, ratingAgg, wishlisted] = await Promise.all([
     prisma.review.findMany({
@@ -130,6 +130,7 @@ export default async function ProductPage({ params }: { params: Params }) {
           labels={{
             madeToOrder: dict.madeToOrder,
             startsAt: dict.startsAt,
+            singleVersion: dict.singleVersion,
             chooseColor: dict.chooseColor,
             customColorHint: dict.customColorHint,
             addExtras: dict.addExtras,

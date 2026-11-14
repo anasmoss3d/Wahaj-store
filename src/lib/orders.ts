@@ -89,7 +89,10 @@ export async function createOrderFromCart(input: {
 
   let subtotalCents = 0;
   const orderItems = cart.items.map((item) => {
-    if (!item.product.active || !item.productColor.active) {
+    if (!item.product.active) {
+      throw new Error(`${item.product.name} is no longer available.`);
+    }
+    if (item.productColor && !item.productColor.active) {
       throw new Error(`${item.product.name} is no longer available.`);
     }
     if (item.product.stockQuantity < item.quantity) {
@@ -99,7 +102,7 @@ export async function createOrderFromCart(input: {
     const addons = item.addons.map((entry) => entry.productAddon.addon);
     const calculated = calculateLinePrice({
       basePrice: item.product.basePrice,
-      colorAdditionalPrice: item.productColor.additionalPrice,
+      colorAdditionalPrice: item.productColor?.additionalPrice ?? 0,
       addonPrices: addons.map((addon) => addon.price),
       quantity: item.quantity
     });
@@ -162,18 +165,22 @@ export async function createOrderFromCart(input: {
               productId: item.productId,
               productName: item.product.name,
               sku: item.product.sku,
-              selectedColorName: item.productColor.color.name,
-              selectedColorHex: item.productColor.color.hexCode,
-              colorAdditionalPrice: item.productColor.additionalPrice,
+              // No-color lines snapshot "" / "" / 0 — keeps historical rows
+              // non-nullable so older orders stay valid.
+              selectedColorName: item.productColor?.color.name ?? "",
+              selectedColorHex: item.productColor?.color.hexCode ?? "",
+              colorAdditionalPrice: item.productColor?.additionalPrice ?? 0,
               basePrice: item.product.basePrice,
               finalUnitPrice: calculated.unitPrice,
               quantity: item.quantity,
               total: calculated.total,
-              imageUrl: getProductColorImageUrl(
-                item.product.slug,
-                item.productColor.color.name,
-                item.productColor.imageUrl || item.product.mainImage
-              ),
+              imageUrl: item.productColor
+                ? getProductColorImageUrl(
+                    item.product.slug,
+                    item.productColor.color.name,
+                    item.productColor.imageUrl || item.product.mainImage
+                  )
+                : item.product.mainImage,
               addons: {
                 create: addons.map((addon) => ({
                   addonName: addon.name,

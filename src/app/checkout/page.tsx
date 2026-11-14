@@ -42,7 +42,7 @@ export default async function CheckoutPage() {
                 flatRate={settings.shippingFlatRate}
                 governorates={[...GOVERNORATES]}
                 hasCustomColor={cart.items.some(
-                  (item) => item.colorName.trim().toLowerCase() === "custom color"
+                  (item) => item.colorName?.trim().toLowerCase() === "custom color"
                 )}
                 instapay={{ handle: settings.instapayHandle, qrImage: settings.instapayQrImage, link: settings.instapayLink }}
                 labels={dict}
@@ -65,7 +65,8 @@ export default async function CheckoutPage() {
                     <div>
                       <p className="font-semibold text-concrete-900">{item.productName}</p>
                       <p className="text-sm text-concrete-500">
-                        {item.colorName} · {dict.quantity} {item.quantity}
+                        {item.colorName ? `${item.colorName} · ` : ""}
+                        {dict.quantity} {item.quantity}
                       </p>
                       <p className="text-sm font-semibold text-wahaj-teal">{formatMoney(item.total)}</p>
                     </div>

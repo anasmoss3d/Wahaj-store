@@ -54,6 +54,7 @@ export function ProductCustomizer({
   labels: {
     madeToOrder: string;
     startsAt: string;
+    singleVersion: string;
     chooseColor: string;
     customColorHint: string;
     addExtras: string;
@@ -121,7 +122,7 @@ export function ProductCustomizer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: product.id,
-          productColorId: selectedColorId,
+          productColorId: selectedColorId || null,
           productAddonIds: selectedAddonIds,
           quantity
         })
@@ -219,55 +220,62 @@ export function ProductCustomizer({
           </p>
         </div>
 
-        <div className="grid gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-concrete-900">{labels.chooseColor}</h2>
-            {selectedColor?.additionalPrice ? (
-              <span className="text-sm text-concrete-500">
-                +{formatter.format(selectedColor.additionalPrice)}
-              </span>
+        {colors.length > 0 ? (
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-concrete-900">{labels.chooseColor}</h2>
+              {selectedColor?.additionalPrice ? (
+                <span className="text-sm text-concrete-500">
+                  +{formatter.format(selectedColor.additionalPrice)}
+                </span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {colors.map((color) => (
+                <button
+                  className={cn(
+                    "flex min-h-14 items-center gap-3 rounded-md border px-3 text-start text-sm transition",
+                    selectedColorId === color.id
+                      ? "border-wahaj-teal bg-wahaj-teal/5"
+                      : "border-concrete-200 bg-white"
+                  )}
+                  key={color.id}
+                  onClick={() => {
+                    setSelectedColorId(color.id);
+                    setSelectedImageUrl(color.imageUrl);
+                  }}
+                  type="button"
+                >
+                  <span
+                    className="h-6 w-6 rounded-full border border-concrete-200"
+                    style={{ background: color.hexCode }}
+                  />
+                  <span className="grid">
+                    <span className="font-semibold">{color.name}</span>
+                    <span className="text-xs text-concrete-500">
+                      {color.additionalPrice ? `+${formatter.format(color.additionalPrice)}` : labels.included}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            {selectedColor?.name.trim().toLowerCase() === "custom color" ? (
+              <p
+                className="rounded-md border border-wahaj-gold/30 bg-wahaj-gold/10 px-4 py-3 text-sm leading-7 text-concrete-700"
+                role="note"
+              >
+                {labels.customColorHint}
+              </p>
             ) : null}
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {colors.map((color) => (
-              <button
-                className={cn(
-                  "flex min-h-14 items-center gap-3 rounded-md border px-3 text-start text-sm transition",
-                  selectedColorId === color.id
-                    ? "border-wahaj-teal bg-wahaj-teal/5"
-                    : "border-concrete-200 bg-white"
-                )}
-                key={color.id}
-                onClick={() => {
-                  setSelectedColorId(color.id);
-                  setSelectedImageUrl(color.imageUrl);
-                }}
-                type="button"
-              >
-                <span
-                  className="h-6 w-6 rounded-full border border-concrete-200"
-                  style={{ background: color.hexCode }}
-                />
-                <span className="grid">
-                  <span className="font-semibold">{color.name}</span>
-                  <span className="text-xs text-concrete-500">
-                    {color.additionalPrice ? `+${formatter.format(color.additionalPrice)}` : labels.included}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-          {selectedColor?.name.trim().toLowerCase() === "custom color" ? (
-            <p
-              className="rounded-md border border-wahaj-gold/30 bg-wahaj-gold/10 px-4 py-3 text-sm leading-7 text-concrete-700"
-              role="note"
-            >
-              {labels.customColorHint}
-            </p>
-          ) : null}
-        </div>
+        ) : (
+          <p className="rounded-md border border-concrete-100 bg-white px-4 py-3 text-sm text-concrete-600">
+            {labels.singleVersion}
+          </p>
+        )}
 
-        <div className="grid gap-3">
+        {addons.length > 0 ? (
+          <div className="grid gap-3">
           <h2 className="font-semibold text-concrete-900">{labels.addExtras}</h2>
           <div className="grid gap-3">
             {addons.map((addon) => (
@@ -300,7 +308,8 @@ export function ProductCustomizer({
               </label>
             ))}
           </div>
-        </div>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-4 border-y border-concrete-100 py-5">
           <div className="inline-flex h-12 items-center rounded-md border border-concrete-200 bg-white">
@@ -340,11 +349,11 @@ export function ProductCustomizer({
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Button disabled={isPending || !selectedColorId} onClick={() => addToCart(false)}>
+          <Button disabled={isPending || (colors.length > 0 && !selectedColorId)} onClick={() => addToCart(false)}>
             <ShoppingBag size={18} /> {labels.addToCart}
           </Button>
           <Button
-            disabled={isPending || !selectedColorId}
+            disabled={isPending || (colors.length > 0 && !selectedColorId)}
             onClick={() => addToCart(true)}
             variant="secondary"
           >

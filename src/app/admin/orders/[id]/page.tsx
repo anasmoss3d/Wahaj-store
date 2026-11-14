@@ -88,10 +88,13 @@ export default async function AdminOrderDetailsPage({ params }: { params: Params
                     <div>
                       <h3 className="font-bold text-concrete-900">{item.productName}</h3>
                       <p className="text-sm text-concrete-500">
-                        {item.sku} · {item.selectedColorName} · Qty {item.quantity}
+                        {item.sku}
+                        {item.selectedColorName ? ` · ${item.selectedColorName}` : ""}
+                        {` · Qty ${item.quantity}`}
                       </p>
                       <p className="mt-1 text-xs text-concrete-500">
-                        Base {formatMoney(item.basePrice)} · Color +{formatMoney(item.colorAdditionalPrice)}
+                        Base {formatMoney(item.basePrice)}
+                        {item.selectedColorName ? ` · Color +${formatMoney(item.colorAdditionalPrice)}` : ""}
                       </p>
                     </div>
                     <p className="font-bold">{formatMoney(item.total)}</p>

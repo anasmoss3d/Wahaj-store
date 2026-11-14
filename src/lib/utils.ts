@@ -14,6 +14,31 @@ export function slugify(input: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Strictly ASCII slug. Arabic product names have no ASCII characters, so this
+ * returns "" for them — pair it with a SKU-based fallback in suggestProductSlug.
+ */
+export function asciiSlug(input: string) {
+  return input
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 180);
+}
+
+/**
+ * Prefers readable Latin letters from the name; falls back to the ASCII SKU
+ * (e.g. "candles-1002") when the name is Arabic or otherwise has no Latin
+ * characters. Last resort is a timestamped fallback so saves never fail.
+ */
+export function suggestProductSlug(name: string, sku: string) {
+  return asciiSlug(name) || asciiSlug(sku) || `product-${Date.now()}`;
+}
+
 export function compact<T>(items: Array<T | null | undefined>) {
   return items.filter(Boolean) as T[];
 }

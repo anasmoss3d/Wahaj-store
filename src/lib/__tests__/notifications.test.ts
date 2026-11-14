@@ -43,4 +43,24 @@ describe("telegram order message", () => {
     expect(text).toContain("كاش عند الاستلام");
     expect(text).not.toContain("الوصل");
   });
+
+  it("omits the color part for no-color order items", () => {
+    const text = buildTelegramOrderMessage(
+      {
+        ...sample,
+        items: [
+          {
+            productName: "Ribbed Vase",
+            quantity: 1,
+            colorName: null,
+            addons: [],
+            total: "250.00"
+          }
+        ]
+      },
+      "https://shop.example.com"
+    );
+    expect(text).toContain("▪️ Ribbed Vase × 1");
+    expect(text).not.toContain("× 1 —");
+  });
 });

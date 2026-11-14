@@ -42,13 +42,15 @@ export default async function CartPage() {
                       {item.productName}
                     </a>
                     <p className="mt-1 text-sm text-concrete-500">SKU {item.sku}</p>
-                    <p className="mt-3 inline-flex items-center gap-2 text-sm">
-                      <span
-                        className="h-4 w-4 rounded-full border"
-                        style={{ background: item.colorHex }}
-                      />
-                      {item.colorName}
-                    </p>
+                    {item.colorName ? (
+                      <p className="mt-3 inline-flex items-center gap-2 text-sm">
+                        <span
+                          className="h-4 w-4 rounded-full border"
+                          style={{ background: item.colorHex ?? "transparent" }}
+                        />
+                        {item.colorName}
+                      </p>
+                    ) : null}
                     {item.addons.length ? (
                       <ul className="mt-3 grid gap-1 text-sm text-concrete-600">
                         {item.addons.map((addon) => (

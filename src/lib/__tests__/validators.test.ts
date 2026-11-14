@@ -1,5 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { addToCartSchema, checkoutSchema, orderStatusInputSchema } from "@/lib/validators";
+import {
+  adminProductSchema,
+  addToCartSchema,
+  checkoutSchema,
+  orderStatusInputSchema
+} from "@/lib/validators";
+
+const adminProductBase = {
+  name: "Strawberry Candles",
+  description: "A handpoured strawberry milk candle by Wahaj.",
+  basePrice: "230",
+  categoryId: "clzzzzzz00001cat",
+  mainImage: "https://example.com/main.webp",
+  sku: "Candles 1002",
+  stockQuantity: 1,
+  active: true,
+  featured: true,
+  bestSeller: true,
+  sortOrder: 0,
+  seoTitle: "",
+  metaDescription: "",
+  canonicalUrl: "",
+  gallery: [],
+  colors: [],
+  addonIds: []
+};
 
 describe("validators", () => {
   it("accepts a valid customized cart item", () => {
@@ -22,6 +47,51 @@ describe("validators", () => {
         quantity: 100
       })
     ).toThrow();
+  });
+
+  it("accepts cart items without a color for no-color products", () => {
+    expect(
+      addToCartSchema.parse({
+        productId: "clzzzzzz00001abc",
+        productColorId: null,
+        productAddonIds: [],
+        quantity: 1
+      }).productColorId
+    ).toBeNull();
+    expect(
+      addToCartSchema.parse({
+        productId: "clzzzzzz00001abc",
+        productColorId: "",
+        quantity: 1
+      }).productColorId
+    ).toBeNull();
+    // Omitted entirely also means "no color".
+    expect(addToCartSchema.parse({ productId: "clzzzzzz00001abc", quantity: 1 }).productColorId).toBeNull();
+  });
+
+  it("saves an admin product with no colors and no slug", () => {
+    const parsed = adminProductSchema.parse(adminProductBase);
+    expect(parsed.colors).toEqual([]);
+    expect(parsed.addonIds).toEqual([]);
+    expect(parsed.slug).toBeUndefined();
+  });
+
+  it("accepts an explicit admin slug and colored products as before", () => {
+    const parsed = adminProductSchema.parse({
+      ...adminProductBase,
+      slug: "candles-1002",
+      colors: [
+        {
+          colorId: "clzzzzzz00004col",
+          additionalPrice: "0",
+          imageUrl: "https://example.com/white.webp",
+          active: true,
+          sortOrder: 0
+        }
+      ]
+    });
+    expect(parsed.slug).toBe("candles-1002");
+    expect(parsed.colors).toHaveLength(1);
   });
 
   it("validates checkout phone and address fields", () => {
