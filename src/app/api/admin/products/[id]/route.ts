@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
+import { safeErrorMessage } from "@/lib/errors";
 import { assertActiveColors, resolveProductSlug } from "@/lib/product-utils";
 import { adminProductSchema, idSchema } from "@/lib/validators";
 
@@ -109,7 +110,7 @@ export async function PUT(request: Request, { params }: Params) {
       );
     }
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Could not update product." },
+      { ok: false, message: await safeErrorMessage(error, "Could not update product. Please try again.") },
       { status: 400 }
     );
   }
@@ -121,25 +122,33 @@ export async function DELETE(request: Request, { params }: Params) {
     const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
     const { id } = await params;
     const productId = idSchema.parse(id);
-    const product = await prisma.product.update({
+    const product = await prisma.product.findUnique({
       where: { id: productId },
-      data: { active: false }
+      select: { id: true, slug: true, category: { select: { slug: true } } }
     });
+    if (!product) {
+      return NextResponse.json({ ok: false, message: "Product not found." }, { status: 404 });
+    }
+    // Remove in-progress copies of this product from live carts first.
+    // Completed orders keep their snapshots (OrderItem stays on the order).
+    await prisma.cartItem.deleteMany({ where: { productId } });
+    await prisma.product.delete({ where: { id: productId } });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
-        action: "PRODUCT_DEACTIVATED",
+        action: "PRODUCT_DELETED",
         entityType: "Product",
         entityId: product.id
       }
     });
     revalidatePath("/");
     revalidatePath("/products");
+    revalidatePath(`/products/${product.category.slug}`);
     revalidatePath("/admin/products");
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Could not delete product." },
+      { ok: false, message: await safeErrorMessage(error, "Could not delete product. Please try again.") },
       { status: 400 }
     );
   }

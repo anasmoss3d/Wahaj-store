@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
+import { safeErrorMessage } from "@/lib/errors";
 import { assertActiveColors, resolveProductSlug } from "@/lib/product-utils";
 import { adminProductSchema } from "@/lib/validators";
 
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Could not save product." },
+      { ok: false, message: await safeErrorMessage(error, "Could not save product. Please try again.") },
       { status: 400 }
     );
   }

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Plus } from "lucide-react";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { DeleteProductButton } from "@/components/admin/delete-product-button";
 import { ButtonLink } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -61,7 +62,12 @@ export default async function AdminProductsPage() {
                 <td className="p-4">{formatMoney(product.basePrice)}</td>
                 <td className="p-4">{product.stockQuantity}</td>
                 <td className="p-4">
-                  {product.colors.length} colors · {product.addons.length} add-ons
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-concrete-500">
+                      {product.colors.length} colors · {product.addons.length} add-ons
+                    </span>
+                    <DeleteProductButton id={product.id} name={product.name} />
+                  </div>
                 </td>
                 <td className="p-4">{product.active ? "Active" : "Inactive"}</td>
               </tr>

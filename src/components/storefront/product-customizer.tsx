@@ -54,7 +54,6 @@ export function ProductCustomizer({
   labels: {
     madeToOrder: string;
     startsAt: string;
-    singleVersion: string;
     chooseColor: string;
     customColorHint: string;
     addExtras: string;
@@ -268,11 +267,7 @@ export function ProductCustomizer({
               </p>
             ) : null}
           </div>
-        ) : (
-          <p className="rounded-md border border-concrete-100 bg-white px-4 py-3 text-sm text-concrete-600">
-            {labels.singleVersion}
-          </p>
-        )}
+        ) : null}
 
         {addons.length > 0 ? (
           <div className="grid gap-3">

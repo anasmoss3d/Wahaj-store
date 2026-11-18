@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { removeCartItem, updateCartItemQuantity } from "@/lib/cart";
+import { safeErrorMessage } from "@/lib/errors";
 import { assertSameOrigin } from "@/lib/security";
 import { cartQuantitySchema, idSchema } from "@/lib/validators";
 
@@ -17,7 +18,7 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Could not update item." },
+      { ok: false, message: await safeErrorMessage(error, "Could not update item. Please try again.") },
       { status: 400 }
     );
   }
@@ -31,7 +32,7 @@ export async function DELETE(request: Request, { params }: Params) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Could not remove item." },
+      { ok: false, message: await safeErrorMessage(error, "Could not remove item. Please try again.") },
       { status: 400 }
     );
   }

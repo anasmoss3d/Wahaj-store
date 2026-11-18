@@ -130,7 +130,6 @@ export default async function ProductPage({ params }: { params: Params }) {
           labels={{
             madeToOrder: dict.madeToOrder,
             startsAt: dict.startsAt,
-            singleVersion: dict.singleVersion,
             chooseColor: dict.chooseColor,
             customColorHint: dict.customColorHint,
             addExtras: dict.addExtras,

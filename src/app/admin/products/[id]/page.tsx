@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { DeleteProductButton } from "@/components/admin/delete-product-button";
 import { ProductForm } from "@/components/admin/product-form";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -35,6 +36,9 @@ export default async function EditProductPage({ params }: { params: Params }) {
     <AdminShell>
       <h1 className="text-3xl font-bold text-concrete-900">Edit product</h1>
       <p className="mt-2 text-concrete-600">{product.name}</p>
+      <div className="mt-4">
+        <DeleteProductButton id={product.id} name={product.name} />
+      </div>
       <div className="mt-8">
         <ProductForm
           addons={addons.map((addon) => ({

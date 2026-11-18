@@ -139,9 +139,8 @@ async function main() {
     String(pageRes.status)
   );
   check(
-    "page shows the single-version note, not a color picker",
-    // Labels are also serialized into the RSC payload, so look for rendered headings.
-    pageRes.text.includes("متوفرة بنسخة واحدة") &&
+    "no single-version note, no color picker, no add-on section",
+    !pageRes.text.includes("متوفرة بنسخة واحدة") &&
       !pageRes.text.includes(">اختر اللون<") &&
       !pageRes.text.includes(">أضف لمسات<")
   );

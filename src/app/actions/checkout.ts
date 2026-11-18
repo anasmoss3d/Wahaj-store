@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createOrderFromCart } from "@/lib/orders";
+import { safeErrorMessage } from "@/lib/errors";
 import { assertSameOrigin } from "@/lib/security";
 import { saveUploadedImage, uploadLimitBytes } from "@/lib/files";
 import { checkoutSchema } from "@/lib/validators";
@@ -12,13 +13,6 @@ import type { ActionState } from "@/app/actions/auth";
 function formValue(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
-}
-
-function isTechnicalError(error: unknown) {
-  if (!(error instanceof Error)) return true;
-  return /prisma|transaction|database|timeout|connection|expired|prepared statement|P1\d{3}|P2\d{3}/i.test(
-    error.message
-  );
 }
 
 const receiptMimes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
@@ -75,10 +69,7 @@ export async function checkoutAction(
     if (error instanceof z.ZodError) {
       return { error: error.issues[0]?.message ?? "Please check the checkout form." };
     }
-    if (isTechnicalError(error)) return { error: genericMessage };
-    return {
-      error: error instanceof Error ? error.message : genericMessage
-    };
+    return { error: await safeErrorMessage(error, genericMessage) };
   }
 
   redirect(target);

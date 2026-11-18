@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { saveUploadedImage } from "@/lib/files";
+import { safeErrorMessage } from "@/lib/errors";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, url });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Upload failed." },
+      { ok: false, message: await safeErrorMessage(error, "Upload failed. Please try again.") },
       { status: 400 }
     );
   }

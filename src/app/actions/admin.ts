@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { safeErrorMessage } from "@/lib/errors";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
 import { upsertStoreSettings } from "@/lib/settings";
@@ -59,7 +60,7 @@ export async function createCategoryAction(
     return { success: "Category created." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not create category." };
+    return { error: await safeErrorMessage(error, "Could not create category.") };
   }
 }
 
@@ -89,7 +90,7 @@ export async function createColorAction(
     return { success: "Color created." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not create color." };
+    return { error: await safeErrorMessage(error, "Could not create color.") };
   }
 }
 
@@ -121,7 +122,7 @@ export async function createAddonAction(
     return { success: "Add-on created." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not create add-on." };
+    return { error: await safeErrorMessage(error, "Could not create add-on.") };
   }
 }
 
@@ -146,7 +147,7 @@ export async function updateOrderStatusAction(
     return { success: "Order status updated." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not update order." };
+    return { error: await safeErrorMessage(error, "Could not update order.") };
   }
 }
 
@@ -196,7 +197,7 @@ export async function updateSettingsAction(  _state: ActionState,
     return { success: "Settings updated." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not update settings." };
+    return { error: await safeErrorMessage(error, "Could not update settings.") };
   }
 }
 
@@ -204,17 +205,9 @@ function idValue(formData: FormData) {
   return value(formData, "id");
 }
 
-function adminError(error: unknown, fallback: string): ActionState {
+async function adminError(error: unknown, fallback: string): Promise<ActionState> {
   if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-  if (
-    error instanceof Error &&
-    /prisma|transaction|database|timeout|connection|expired|prepared statement|connector|query execution|P1\d{3}|P2\d{3}/i.test(
-      error.message
-    )
-  ) {
-    return { error: "Something went wrong. Please try again." };
-  }
-  return { error: error instanceof Error ? error.message : fallback };
+  return { error: await safeErrorMessage(error, fallback) };
 }
 
 export async function updateCategoryAction(
@@ -246,7 +239,7 @@ export async function updateCategoryAction(
     return { success: "Category updated." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not update category." };
+    return { error: await safeErrorMessage(error, "Could not update category.") };
   }
 }
 
@@ -273,7 +266,7 @@ export async function deleteCategoryAction(
     revalidatePath("/products");
     return { success: "Category deleted." };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not delete category." };
+    return { error: await safeErrorMessage(error, "Could not delete category.") };
   }
 }
 
@@ -303,7 +296,7 @@ export async function updateColorAction(
     return { success: "Color updated." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not update color." };
+    return { error: await safeErrorMessage(error, "Could not update color.") };
   }
 }
 
@@ -329,7 +322,7 @@ export async function deleteColorAction(
     revalidatePath("/admin/colors");
     return { success: "Color deleted." };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not delete color." };
+    return { error: await safeErrorMessage(error, "Could not delete color.") };
   }
 }
 
@@ -361,7 +354,7 @@ export async function updateAddonAction(
     return { success: "Add-on updated." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not update add-on." };
+    return { error: await safeErrorMessage(error, "Could not update add-on.") };
   }
 }
 
@@ -387,7 +380,7 @@ export async function deleteAddonAction(
     revalidatePath("/admin/addons");
     return { success: "Add-on deleted." };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not delete add-on." };
+    return { error: await safeErrorMessage(error, "Could not delete add-on.") };
   }
 }
 
@@ -437,7 +430,7 @@ export async function upsertCouponAction(
     return { success: id ? "Coupon updated." : "Coupon created." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not save coupon." };
+    return { error: await safeErrorMessage(error, "Could not save coupon.") };
   }
 }
 
@@ -461,7 +454,7 @@ export async function deleteCouponAction(
     revalidatePath("/admin/coupons");
     return { success: "Coupon deleted." };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not delete coupon." };
+    return { error: await safeErrorMessage(error, "Could not delete coupon.") };
   }
 }
 
@@ -501,7 +494,7 @@ export async function upsertShippingRateAction(
     return { success: "Shipping rate saved." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not save shipping rate." };
+    return { error: await safeErrorMessage(error, "Could not save shipping rate.") };
   }
 }
 
@@ -529,7 +522,7 @@ export async function approveReviewAction(  _state: ActionState,
     revalidatePath(`/products/${review.product.slug}`);
     return { success: "Review approved." };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not approve review." };
+    return { error: await safeErrorMessage(error, "Could not approve review.") };
   }
 }
 
@@ -553,7 +546,7 @@ export async function deleteReviewAction(
     revalidatePath("/admin/reviews");
     return { success: "Review deleted." };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not delete review." };
+    return { error: await safeErrorMessage(error, "Could not delete review.") };
   }
 }
 
@@ -582,7 +575,7 @@ export async function updateOrderCustomerAction(
     revalidatePath(`/admin/orders/${orderId}`);
     return { success: "Order updated." };
   } catch (error) {
-    return adminError(error, "Could not update order.");
+    return await adminError(error, "Could not update order.");
   }
 }
 
@@ -608,7 +601,7 @@ export async function updateOrderItemAction(
     revalidatePath(`/admin/orders/${orderId}`);
     return { success: "Order item updated." };
   } catch (error) {
-    return adminError(error, "Could not update item.");
+    return await adminError(error, "Could not update item.");
   }
 }
 
@@ -624,6 +617,6 @@ export async function deleteOrderAction(
     revalidatePath("/admin/orders");
     return { success: "Order deleted and stock restored." };
   } catch (error) {
-    return adminError(error, "Could not delete order.");
+    return await adminError(error, "Could not delete order.");
   }
 }

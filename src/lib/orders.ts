@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { validateCouponForSubtotal } from "@/lib/coupons";
 import { prisma } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { cairoOrderDatePrefix } from "@/lib/datetime";
 import { centsToDecimal, toCents } from "@/lib/money";
 import { calculateLinePrice, canMoveOrderStatus } from "@/lib/pricing";
@@ -45,12 +46,12 @@ export async function createOrderFromCart(input: {
   const trackingToken = createTrackingToken();
 
   if (!user && !cartSessionId) {
-    throw new Error("Your cart is empty.");
+    throw new AppError("Your cart is empty.");
   }
 
   const paymentMethod = input.paymentMethod === "INSTAPAY" ? "INSTAPAY" : "CASH_ON_DELIVERY";
   if (paymentMethod === "INSTAPAY" && !input.paymentReceiptUrl) {
-    throw new Error("Payment receipt is required for InstaPay orders.");
+    throw new AppError("Payment receipt is required for InstaPay orders.");
   }
 
   const cartOwnershipWhere = user
@@ -84,19 +85,19 @@ export async function createOrderFromCart(input: {
   });
 
   if (!cart || cart.items.length === 0) {
-    throw new Error("Your cart is empty.");
+    throw new AppError("Your cart is empty.");
   }
 
   let subtotalCents = 0;
   const orderItems = cart.items.map((item) => {
     if (!item.product.active) {
-      throw new Error(`${item.product.name} is no longer available.`);
+      throw new AppError(`${item.product.name} is no longer available.`);
     }
     if (item.productColor && !item.productColor.active) {
-      throw new Error(`${item.product.name} is no longer available.`);
+      throw new AppError(`${item.product.name} is no longer available.`);
     }
     if (item.product.stockQuantity < item.quantity) {
-      throw new Error(`${item.product.name} cannot be ordered in that quantity right now.`);
+      throw new AppError(`${item.product.name} cannot be ordered in that quantity right now.`);
     }
 
     const addons = item.addons.map((entry) => entry.productAddon.addon);
@@ -134,7 +135,7 @@ export async function createOrderFromCart(input: {
     async (tx) => {
       const freshCart = await tx.cart.findUnique({ where: { id: cart.id } });
       if (!freshCart || freshCart.status !== "ACTIVE") {
-        throw new Error("This cart was already ordered.");
+        throw new AppError("This cart was already ordered.");
       }
 
       const orderNumber = await nextOrderNumber(tx);
@@ -215,7 +216,7 @@ export async function createOrderFromCart(input: {
           data: { stockQuantity: { decrement: item.quantity } }
         });
         if (stock.count === 0) {
-          throw new Error(`${item.product.name} cannot be ordered in that quantity right now.`);
+          throw new AppError(`${item.product.name} cannot be ordered in that quantity right now.`);
         }
       }
 
@@ -281,7 +282,7 @@ export async function createOrderFromCart(input: {
 
 function assertOrderEditable(status: OrderStatus) {
   if (status === "DELIVERED") {
-    throw new Error("Delivered orders cannot be changed.");
+    throw new AppError("Delivered orders cannot be changed.");
   }
 }
 
@@ -300,7 +301,7 @@ export async function updateOrderCustomer(input: {
   internalNotes?: string | null;
 }) {
   const order = await prisma.order.findUnique({ where: { id: input.orderId } });
-  if (!order) throw new Error("Order not found.");
+  if (!order) throw new AppError("Order not found.");
   assertOrderEditable(order.status);
 
   const discountCents = toCents(order.discountTotal);
@@ -357,14 +358,14 @@ export async function updateOrderItemQuantity(input: {
     where: { id: input.orderId },
     include: { items: true }
   });
-  if (!order) throw new Error("Order not found.");
+  if (!order) throw new AppError("Order not found.");
   assertOrderEditable(order.status);
 
   const item = order.items.find((row) => row.id === input.itemId);
-  if (!item) throw new Error("Order item not found.");
+  if (!item) throw new AppError("Order item not found.");
   if (input.quantity === item.quantity) return order;
   if (order.items.length === 1 && input.quantity === 0) {
-    throw new Error("An order must keep at least one item. Delete the order instead.");
+    throw new AppError("An order must keep at least one item. Delete the order instead.");
   }
 
   return prisma.$transaction(async (tx) => {
@@ -384,7 +385,7 @@ export async function updateOrderItemQuantity(input: {
           data: { stockQuantity: { decrement: diff } }
         });
         if (stock.count === 0) {
-          throw new Error(`${item.productName} does not have enough stock.`);
+          throw new AppError(`${item.productName} does not have enough stock.`);
         }
       } else if (diff < 0 && item.productId) {
         await tx.product.update({
@@ -443,7 +444,7 @@ export async function deleteOrder(input: { orderId: string; adminUserId: string 
     where: { id: input.orderId },
     include: { items: true }
   });
-  if (!order) throw new Error("Order not found.");
+  if (!order) throw new AppError("Order not found.");
 
   return prisma.$transaction(async (tx) => {
     for (const item of order.items) {
@@ -499,9 +500,9 @@ export async function updateOrderStatus(input: {
   adminUserId: string;
 }) {
   const order = await prisma.order.findUnique({ where: { id: input.orderId } });
-  if (!order) throw new Error("Order not found.");
+  if (!order) throw new AppError("Order not found.");
   if (!canMoveOrderStatus(order.status, input.status)) {
-    throw new Error("This status transition is not allowed.");
+    throw new AppError("This status transition is not allowed.");
   }
 
   return prisma.$transaction(async (tx) => {

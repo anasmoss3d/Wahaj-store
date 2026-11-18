@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { AppError } from "@/lib/errors";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -16,8 +17,7 @@ export async function assertSameOrigin(method = "POST") {
   const originHost = new URL(origin).host;
   if (originHost !== host) {
     throw new Error("Invalid request origin.");
-  }
-}
+  }}
 
 export async function requestMetadata() {
   const headerStore = await headers();
@@ -42,6 +42,6 @@ export function rateLimit(key: string, limit = 20, windowMs = 60_000) {
 
   current.count += 1;
   if (current.count > limit) {
-    throw new Error("Too many requests. Please try again shortly.");
+    throw new AppError("Too many requests. Please try again shortly.");
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addCartItem } from "@/lib/cart";
+import { safeErrorMessage } from "@/lib/errors";
 import { assertSameOrigin } from "@/lib/security";
 import { addToCartSchema } from "@/lib/validators";
 
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "Could not add item." },
+      { ok: false, message: await safeErrorMessage(error, "Could not add item. Please try again.") },
       { status: 400 }
     );
   }

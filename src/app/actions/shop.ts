@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { ActionState } from "@/app/actions/auth";
 import { getCurrentUser } from "@/lib/auth";
 import { setCartCoupon } from "@/lib/cart";
+import { safeErrorMessage } from "@/lib/errors";
 import { LOCALE_COOKIE, isLocale } from "@/lib/i18n";
 import { prisma } from "@/lib/db";
 import { assertSameOrigin, rateLimit, requestMetadata } from "@/lib/security";
@@ -29,7 +30,7 @@ export async function applyCouponAction(
     return { success: "Coupon applied." };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not apply coupon." };
+    return { error: await safeErrorMessage(error, "Could not apply coupon right now. Please try again.") };
   }
 }
 
@@ -41,7 +42,7 @@ export async function removeCouponAction(): Promise<ActionState> {
     revalidatePath("/checkout");
     return { success: "Coupon removed." };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not remove coupon." };
+    return { error: await safeErrorMessage(error, "Could not remove the coupon. Please try again.") };
   }
 }
 
@@ -69,7 +70,7 @@ export async function toggleWishlistAction(productId: string): Promise<ActionSta
     return { success: "ADDED" };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not update wishlist." };
+    return { error: await safeErrorMessage(error, "Could not update your wishlist. Please try again.") };
   }
 }
 
@@ -113,7 +114,7 @@ export async function submitReviewAction(
     return { success: "REVIEW_PENDING" };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: error instanceof Error ? error.message : "Could not submit review." };
+    return { error: await safeErrorMessage(error, "Could not submit your review. Please try again.") };
   }
 }
 

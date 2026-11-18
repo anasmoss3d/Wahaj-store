@@ -1,5 +1,6 @@
 import type { CouponType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { toCents, type MoneyInput } from "@/lib/money";
 
 export function normalizeCouponCode(code: string) {
@@ -26,21 +27,21 @@ export async function validateCouponForSubtotal(
   client: Pick<typeof prisma, "coupon"> = prisma
 ) {
   const normalized = normalizeCouponCode(code);
-  if (!normalized) throw new Error("Enter a coupon code.");
+  if (!normalized) throw new AppError("Enter a coupon code.");
 
   const coupon = await client.coupon.findUnique({ where: { code: normalized } });
-  if (!coupon || !coupon.active) throw new Error("This coupon is not valid.");
+  if (!coupon || !coupon.active) throw new AppError("This coupon is not valid.");
   const now = new Date();
-  if (coupon.startsAt && coupon.startsAt > now) throw new Error("This coupon is not active yet.");
-  if (coupon.endsAt && coupon.endsAt < now) throw new Error("This coupon has expired.");
+  if (coupon.startsAt && coupon.startsAt > now) throw new AppError("This coupon is not active yet.");
+  if (coupon.endsAt && coupon.endsAt < now) throw new AppError("This coupon has expired.");
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
-    throw new Error("This coupon has reached its usage limit.");
+    throw new AppError("This coupon has reached its usage limit.");
   }
   if (subtotalCents < toCents(coupon.minSubtotal)) {
-    throw new Error(`This coupon requires a minimum subtotal.`);
+    throw new AppError(`This coupon requires a minimum subtotal.`);
   }
 
   const discountCents = calculateCouponDiscountCents(coupon.type, coupon.value, subtotalCents);
-  if (discountCents <= 0) throw new Error("This coupon gives no discount on this cart.");
+  if (discountCents <= 0) throw new AppError("This coupon gives no discount on this cart.");
   return { coupon, discountCents };
 }

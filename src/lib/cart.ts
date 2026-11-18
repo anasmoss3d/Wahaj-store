@@ -3,6 +3,7 @@ import { cache } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { validateCouponForSubtotal } from "@/lib/coupons";
 import { prisma } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { calculateLinePrice, cartItemSignature } from "@/lib/pricing";
 import { getOrCreateCartSessionId, readCookie, CART_COOKIE } from "@/lib/sessions";
 import { getProductColorImageUrl } from "@/lib/product-images";
@@ -168,7 +169,7 @@ export async function addCartItem(input: {
   quantity: number;
 }) {
   const cart = await findActiveCart(true);
-  if (!cart) throw new Error("Could not create cart.");
+  if (!cart) throw new AppError("Your cart could not be opened right now. Please try again.");
 
   const productColorId = input.productColorId ?? null;
   const hasColor = Boolean(productColorId);
@@ -189,20 +190,20 @@ export async function addCartItem(input: {
     }
   });
 
-  if (!product) throw new Error("This product is no longer available.");
+  if (!product) throw new AppError("This product is no longer available.");
   if (hasColor && product.colors.length !== 1) {
-    throw new Error("This product option is no longer available.");
+    throw new AppError("This product option is no longer available.");
   }
   if (!hasColor && product.colors.length > 0) {
-    throw new Error("This product has colors — please choose one.");
+    throw new AppError("This product has colors — please choose one.");
   }
 
   if (input.productAddonIds.length !== product.addons.length) {
-    throw new Error("One or more selected add-ons are not available for this product.");
+    throw new AppError("One or more selected add-ons are not available for this product.");
   }
 
   if (product.stockQuantity < input.quantity) {
-    throw new Error("We couldn't add that quantity. Please try a smaller amount.");
+    throw new AppError("We couldn't add that quantity. Please try a smaller amount.");
   }
 
   const color = product.colors[0] ?? null;
@@ -261,15 +262,15 @@ export async function addCartItem(input: {
 
 export async function updateCartItemQuantity(id: string, quantity: number) {
   const cart = await findActiveCart(false);
-  if (!cart) throw new Error("Cart not found.");
+  if (!cart) throw new AppError("Your cart could not be found. Please try adding the item again.");
 
   const item = await prisma.cartItem.findFirst({
     where: { id, cartId: cart.id },
     include: { product: true }
   });
-  if (!item) throw new Error("Cart item not found.");
+  if (!item) throw new AppError("Cart item not found.");
   if (item.product.stockQuantity < quantity) {
-    throw new Error("We couldn't update to that quantity. Please try a smaller amount.");
+    throw new AppError("We couldn't update to that quantity. Please try a smaller amount.");
   }
 
   return prisma.cartItem.update({
@@ -280,13 +281,13 @@ export async function updateCartItemQuantity(id: string, quantity: number) {
 
 export async function removeCartItem(id: string) {
   const cart = await findActiveCart(false);
-  if (!cart) throw new Error("Cart not found.");
+  if (!cart) throw new AppError("Your cart could not be found. Please try adding the item again.");
   await prisma.cartItem.deleteMany({ where: { id, cartId: cart.id } });
 }
 
 export async function setCartCoupon(code: string | null) {
   const cart = await findActiveCart(true);
-  if (!cart) throw new Error("Could not create cart.");
+  if (!cart) throw new AppError("Your cart could not be opened right now. Please try again.");
 
   if (code === null) {
     await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
@@ -294,7 +295,7 @@ export async function setCartCoupon(code: string | null) {
   }
 
   const view = await getCartView();
-  if (view.items.length === 0) throw new Error("Your cart is empty.");
+  if (view.items.length === 0) throw new AppError("Your cart is empty.");
   const { coupon } = await validateCouponForSubtotal(code, view.subtotalCents);
   await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: coupon.code } });
 }
