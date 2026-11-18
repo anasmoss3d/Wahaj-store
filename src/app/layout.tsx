@@ -1,10 +1,25 @@
 import type { Metadata } from "next";
-import { Cairo, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "@/app/globals.css";
 import { direction, getLocale } from "@/lib/i18n";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-latin" });
-const cairo = Cairo({ subsets: ["arabic", "latin"], variable: "--font-arabic", weight: ["400", "600", "700", "800"] });
+// Self-hosted variable fonts (fetch via `scripts/fetch-fonts.ps1`).
+// Vercel builds cannot reach fonts.googleapis.com at build time, so next/font/google
+// fails there; local fonts ship in the build output instead.
+const inter = localFont({
+  src: [
+    { path: "./fonts/Inter-latin.woff2", weight: "100 900", style: "normal" },
+    { path: "./fonts/Inter-latin-ext.woff2", weight: "100 900", style: "normal" }
+  ],
+  variable: "--font-latin"
+});
+const cairo = localFont({
+  src: [
+    { path: "./fonts/Cairo-latin.woff2", weight: "200 1000", style: "normal" },
+    { path: "./fonts/Cairo-arabic.woff2", weight: "200 1000", style: "normal" }
+  ],
+  variable: "--font-arabic"
+});
 
 export const metadata: Metadata = {
   title: {
