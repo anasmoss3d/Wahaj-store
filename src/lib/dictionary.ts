@@ -50,6 +50,7 @@ export const en = {
   applyFilters: "Apply filters",
   customize: "Customize",
   chooseColor: "Choose color",
+  chooseSize: "Choose size",
   customColorHint:
     "For a custom color, write your preferred color and marble pattern in the order notes at checkout. Use the marble styles in the Custom Color photo as inspiration.",
   customColorNotesHint:
@@ -122,6 +123,9 @@ export const en = {
     "There is a temporary issue on our side. Please try again, or go back to the home page and continue shopping.",
   errorRetry: "Try again",
   errorHome: "Back to home",
+  productNotFoundTitle: "Product not found",
+  productNotFoundHint:
+    "That product may have been renamed or removed. Browse the current collection and find a similar piece.",
   timeline: "Timeline",
   items: "Items",
   waiting: "Waiting",
@@ -238,6 +242,7 @@ export const ar: Dictionary = {
   applyFilters: "تطبيق الفلاتر",
   customize: "تخصيص",
   chooseColor: "اختر اللون",
+  chooseSize: "اختر الحجم",
   customColorHint:
     "لو اخترت لون مخصص، اكتب اللون وشكل العروق الرخامية اللي تفضله في ملاحظات الطلب عند الدفع. تقدر تستلهم الشكل من صورة Custom Color.",
   customColorNotesHint:
@@ -310,6 +315,9 @@ export const ar: Dictionary = {
   errorHint: "فيه مشكلة مؤقتة عندنا. جرب تاني، أو ارجع للصفحة الرئيسية وأكمل التسوق.",
   errorRetry: "جرب تاني",
   errorHome: "الرجوع للرئيسية",
+  productNotFoundTitle: "المنتج مش موجود",
+  productNotFoundHint:
+    "المنتج ده ممكن اتغير اسمه أو اتشال. ادور في التشكيلة الحالية وهتلاقي قطعا مشابهة.",
   timeline: "مراحل الطلب",
   items: "المنتجات",
   waiting: "بانتظار",

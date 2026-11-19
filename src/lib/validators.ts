@@ -1,5 +1,6 @@
 import { CouponType, OrderStatus, PaymentMethod } from "@prisma/client";
 import { z } from "zod";
+import { SKU_SUGGESTED } from "@/lib/utils";
 
 const phoneRegex = /^(\+?2)?01[0125][0-9]{8}$/;
 const hexRegex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -21,6 +22,10 @@ export const registerSchema = z.object({
 export const addToCartSchema = z.object({
   productId: idSchema,
   productColorId: z
+    .union([idSchema, z.null(), z.literal("")])
+    .default(null)
+    .transform((value) => (value === "" ? null : value)),
+  productSizeId: z
     .union([idSchema, z.null(), z.literal("")])
     .default(null)
     .transform((value) => (value === "" ? null : value)),
@@ -61,6 +66,12 @@ export const colorInputSchema = z.object({
   sortOrder: z.number().int().default(0)
 });
 
+export const sizeInputSchema = z.object({
+  name: z.string().min(2).max(80),
+  active: z.boolean().default(true),
+  sortOrder: z.number().int().default(0)
+});
+
 export const addonInputSchema = z.object({
   name: z.string().min(2).max(120),
   description: z.string().max(500).optional().or(z.literal("")),
@@ -77,7 +88,13 @@ export const adminProductSchema = z.object({
   basePrice: z.coerce.number().min(1).max(999999),
   categoryId: idSchema,
   mainImage: z.string().min(1).max(500),
-  sku: z.string().min(2).max(80),
+  // The SKU is generated from the product name on the server. The form only
+  // sends the placeholder (or an older hand-written value), so accept both.
+  sku: z
+    .string()
+    .max(80)
+    .optional()
+    .transform((value) => (value && value.trim() ? value.trim() : SKU_SUGGESTED)),
   stockQuantity: z.coerce.number().int().min(0).max(999999),
   active: z.boolean().default(false),
   featured: z.boolean().default(false),
@@ -102,6 +119,19 @@ export const adminProductSchema = z.object({
         colorId: idSchema,
         additionalPrice: z.coerce.number().min(0).max(999999),
         imageUrl: z.string().min(1).max(500),
+        active: z.boolean().default(true),
+        sortOrder: z.coerce.number().int().default(0)
+      })
+    )
+    .default([]),
+  // Sizes are optional: a product can publish without sizes. When one or more
+  // sizes are set, the customer MUST pick one (the size price becomes the
+  // item's full price for that product).
+  sizes: z
+    .array(
+      z.object({
+        sizeId: idSchema,
+        price: z.coerce.number().min(1).max(999999),
         active: z.boolean().default(true),
         sortOrder: z.coerce.number().int().default(0)
       })

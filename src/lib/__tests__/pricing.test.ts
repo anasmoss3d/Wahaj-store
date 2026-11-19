@@ -21,6 +21,19 @@ describe("pricing", () => {
     expect(price.total.toString()).toBe("630");
   });
 
+  it("replaces the base price with the selected size full price", () => {
+    const price = calculateLinePrice({
+      basePrice: "250.00",
+      sizePrice: "340",
+      colorAdditionalPrice: "15",
+      addonPrices: ["30"],
+      quantity: 2
+    });
+
+    expect(price.unitCents).toBe(38500);
+    expect(price.totalCents).toBe(77000);
+  });
+
   it("rejects invalid quantities", () => {
     expect(() =>
       calculateLinePrice({
@@ -52,6 +65,12 @@ describe("pricing", () => {
     // No-color items stay distinct from every colored variant.
     expect(cartItemSignature("p1", null, [])).toBe(cartItemSignature("p1", "", []));
     expect(cartItemSignature("p1", null, [])).not.toBe(cartItemSignature("p1", "black", []));
+    // Different sizes of the same product are distinct cart lines.
+    expect(cartItemSignature("p1", null, [], "s50")).not.toBe(
+      cartItemSignature("p1", null, [], "s150")
+    );
+    // An item without a size stays legacy signature-compatible.
+    expect(cartItemSignature("p1", null, [], null)).toBe(cartItemSignature("p1", null, []));
   });
 
   it("allows forward order status movement and cancellation before delivery", () => {

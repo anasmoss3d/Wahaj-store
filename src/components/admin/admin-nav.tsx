@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Palette, Puzzle, Settings, ShoppingBag, Star, Tags, TicketPercent } from "lucide-react";
+import { LayoutDashboard, Package, Palette, Puzzle, Ruler, Settings, ShoppingBag, Star, Tags, TicketPercent } from "lucide-react";
 import { adminLogoutAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 
@@ -8,6 +8,7 @@ const links = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/colors", label: "Colors", icon: Palette },
+  { href: "/admin/sizes", label: "Sizes", icon: Ruler },
   { href: "/admin/addons", label: "Add-ons", icon: Puzzle },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },
   { href: "/admin/reviews", label: "Reviews", icon: Star },

@@ -90,10 +90,11 @@ export default async function AdminOrderDetailsPage({ params }: { params: Params
                       <p className="text-sm text-concrete-500">
                         {item.sku}
                         {item.selectedColorName ? ` · ${item.selectedColorName}` : ""}
+                        {item.selectedSizeName ? ` · ${item.selectedSizeName}` : ""}
                         {` · Qty ${item.quantity}`}
                       </p>
                       <p className="mt-1 text-xs text-concrete-500">
-                        Base {formatMoney(item.basePrice)}
+                        {item.selectedSizeName ? `Size ${item.selectedSizeName}` : `Base ${formatMoney(item.basePrice)}`}
                         {item.selectedColorName ? ` · Color +${formatMoney(item.colorAdditionalPrice)}` : ""}
                       </p>
                     </div>

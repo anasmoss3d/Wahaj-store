@@ -39,6 +39,30 @@ export function suggestProductSlug(name: string, sku: string) {
   return asciiSlug(name) || asciiSlug(sku) || `product-${Date.now()}`;
 }
 
+/**
+ * Placeholder stored while a product's real SKU is still generated
+ * server-side. It is never shown to customers: the form disables the field
+ * and the API replaces it on save.
+ */
+export const SKU_SUGGESTED = "WAH-AUTO";
+
+/** Short readable stem for an auto SKU, e.g. "Black Luxury Tray" -> "BLACKLUXURYTRAY". */
+export function skuStem(name: string) {
+  const compact = asciiSlug(name).replace(/-/g, "").slice(0, 14);
+  return compact.length >= 3 ? compact.toUpperCase() : "WAH";
+}
+
+function skuCounter(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return hash % 900 + 100;
+}
+
+/** Deterministic SKU preview for the admin form; the final value is generated uniquely on the server. */
+export function suggestedProductSku(name: string) {
+  return name.trim() ? `WAH-${skuStem(name)}-${skuCounter(name)}` : `${SKU_SUGGESTED}-000`;
+}
+
 export function compact<T>(items: Array<T | null | undefined>) {
   return items.filter(Boolean) as T[];
 }

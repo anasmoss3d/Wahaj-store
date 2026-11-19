@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { suggestProductSlug } from "@/lib/utils";
+import { SKU_SUGGESTED, skuStem, suggestProductSlug } from "@/lib/utils";
 
 /**
  * A product that lists a color the admin muted globally would silently
@@ -14,6 +14,22 @@ export async function assertActiveColors(colorIds: string[]) {
   });
   if (activeCount !== ids.length) {
     throw new Error("One or more selected colors are inactive. Reactivate them or remove them.");
+  }
+}
+
+/**
+ * A product that lists a size the admin muted globally would silently
+ * disappear from the storefront (and used to 404), so block the save with a
+ * message the admin can act on.
+ */
+export async function assertActiveSizes(sizeIds: string[]) {
+  if (sizeIds.length === 0) return;
+  const ids = [...new Set(sizeIds)];
+  const activeCount = await prisma.size.count({
+    where: { id: { in: ids }, active: true }
+  });
+  if (activeCount !== ids.length) {
+    throw new Error("One or more selected sizes are inactive. Reactivate them or remove them.");
   }
 }
 
@@ -54,5 +70,40 @@ export async function resolveProductSlug(input: {
   if (input.productSlug) {
     return input.productSlug;
   }
-  return uniqueProductSlug(suggestProductSlug(input.name, input.sku), input.productId);
+  // The placeholder SKU is not a real source for a slug (it would produce
+  // "wah-auto" for Arabic names), so treat it as absent.
+  const sku = input.sku && input.sku !== SKU_SUGGESTED ? input.sku : "";
+  return uniqueProductSlug(suggestProductSlug(input.name, sku), input.productId);
+}
+
+/**
+ * Server-side SKU generation: the admin never types a SKU — it is generated
+ * from the product name (e.g. "White Luxe Tray 40" -> WAH-WHITELUXETRAY4-###)
+ * and made unique against the database. The existing SKU of a product is kept
+ * unless it is still the untouched placeholder or the admin wrote a value
+ * by hand.
+ */
+export async function resolveProductSku(input: {
+  name: string;
+  sku?: string | null;
+  currentSku?: string | null;
+  productId?: string;
+}) {
+  const current = input.currentSku?.trim();
+  if (current && current !== SKU_SUGGESTED) {
+    return current;
+  }
+  const base = `WAH-${skuStem(input.name)}`;
+  const others = await prisma.product.findMany({
+    where: { sku: { startsWith: `${base}-` }, ...(input.productId ? { id: { not: input.productId } } : {}) },
+    select: { sku: true }
+  });
+  const taken = new Set<number>();
+  for (const row of others) {
+    const suffix = Number(row.sku.slice(base.length + 1));
+    if (Number.isInteger(suffix)) taken.add(suffix);
+  }
+  let counter = Math.max(100, ...[...taken].filter((n) => n < 1000));
+  while (taken.has(counter) || counter > 999) counter++;
+  return `${base}-${counter}`;
 }

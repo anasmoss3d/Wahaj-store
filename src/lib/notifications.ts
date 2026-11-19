@@ -5,6 +5,7 @@ export type OrderNotificationItem = {
   productName: string;
   quantity: number;
   colorName: string | null;
+  sizeName?: string | null;
   addons: string[];
   total: string;
 };
@@ -37,7 +38,7 @@ export function buildTelegramOrderMessage(order: OrderNotification, adminBaseUrl
     `🏠 ${order.fullAddress}`,
     "",
     ...order.items.flatMap((item) => [
-      `▪️ ${item.productName} × ${item.quantity}${item.colorName ? ` — ${item.colorName}` : ""}`,
+      `▪️ ${item.productName} × ${item.quantity}${item.colorName ? ` — ${item.colorName}` : ""}${item.sizeName ? ` — ${item.sizeName}` : ""}`,
       ...(item.addons.length ? [`   ➕ ${item.addons.join("، ")}`] : []),
       `   💰 ${item.total} جنيه`
     ]),

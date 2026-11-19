@@ -71,6 +71,7 @@ export async function createOrderFromCart(input: {
         include: {
           product: true,
           productColor: { include: { color: true } },
+          productSize: { include: { size: true } },
           addons: {
             include: {
               productAddon: {
@@ -96,6 +97,9 @@ export async function createOrderFromCart(input: {
     if (item.productColor && !item.productColor.active) {
       throw new AppError(`${item.product.name} is no longer available.`);
     }
+    if (item.productSize && !item.productSize.active) {
+      throw new AppError(`${item.product.name} is no longer available.`);
+    }
     if (item.product.stockQuantity < item.quantity) {
       throw new AppError(`${item.product.name} cannot be ordered in that quantity right now.`);
     }
@@ -103,6 +107,7 @@ export async function createOrderFromCart(input: {
     const addons = item.addons.map((entry) => entry.productAddon.addon);
     const calculated = calculateLinePrice({
       basePrice: item.product.basePrice,
+      sizePrice: item.productSize?.price,
       colorAdditionalPrice: item.productColor?.additionalPrice ?? 0,
       addonPrices: addons.map((addon) => addon.price),
       quantity: item.quantity
@@ -170,6 +175,7 @@ export async function createOrderFromCart(input: {
               // non-nullable so older orders stay valid.
               selectedColorName: item.productColor?.color.name ?? "",
               selectedColorHex: item.productColor?.color.hexCode ?? "",
+              selectedSizeName: item.productSize?.size.name ?? "",
               colorAdditionalPrice: item.productColor?.additionalPrice ?? 0,
               basePrice: item.product.basePrice,
               finalUnitPrice: calculated.unitPrice,
@@ -268,6 +274,7 @@ export async function createOrderFromCart(input: {
           productName: item.productName,
           quantity: item.quantity,
           colorName: item.selectedColorName,
+          sizeName: item.selectedSizeName,
           addons: item.addons.map((addon) => addon.addonName),
           total: item.total.toString()
         }))

@@ -13,12 +13,13 @@ type Params = Promise<{ id: string }>;
 export default async function EditProductPage({ params }: { params: Params }) {
   await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
   const { id } = await params;
-  const [product, categories, colors, addons] = await Promise.all([
+  const [product, categories, colors, sizes, addons] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
       include: {
         images: { orderBy: { sortOrder: "asc" } },
         colors: { orderBy: { sortOrder: "asc" } },
+        sizes: { orderBy: { sortOrder: "asc" } },
         addons: true
       }
     }),
@@ -27,6 +28,7 @@ export default async function EditProductPage({ params }: { params: Params }) {
     // storefront). A product that already holds a muted color can still be
     // opened; saving without selecting it drops that hidden option.
     prisma.color.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
+    prisma.size.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     prisma.addon.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] })
   ]);
 
@@ -52,6 +54,7 @@ export default async function EditProductPage({ params }: { params: Params }) {
             name: color.name,
             hexCode: color.hexCode
           }))}
+          sizes={sizes.map((size) => ({ id: size.id, name: size.name }))}
           initial={{
             id: product.id,
             name: product.name,
@@ -80,6 +83,12 @@ export default async function EditProductPage({ params }: { params: Params }) {
               imageUrl: color.imageUrl,
               active: color.active,
               sortOrder: color.sortOrder
+            })),
+            sizes: product.sizes.map((size) => ({
+              sizeId: size.sizeId,
+              price: size.price.toString(),
+              active: size.active,
+              sortOrder: size.sortOrder
             })),
             addonIds: product.addons.map((addon) => addon.addonId)
           }}

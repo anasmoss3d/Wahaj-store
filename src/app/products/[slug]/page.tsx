@@ -26,6 +26,11 @@ async function getProduct(slug: string) {
         include: { color: true },
         orderBy: { sortOrder: "asc" }
       },
+      sizes: {
+        where: { active: true, size: { active: true } },
+        include: { size: true },
+        orderBy: { sortOrder: "asc" }
+      },
       addons: {
         where: { active: true, addon: { active: true } },
         include: { addon: true },
@@ -89,6 +94,11 @@ export default async function ProductPage({ params }: { params: Params }) {
     additionalPrice: Number(item.additionalPrice),
     imageUrl: getProductColorImageUrl(product.slug, item.color.name, item.imageUrl)
   }));
+  const sizeOptions = product.sizes.map((item) => ({
+    id: item.id,
+    name: item.size.name,
+    price: Number(item.price)
+  }));
   const galleryImages = [
     { url: product.mainImage, alt: product.name },
     ...product.images.map((image) => ({ url: image.url, alt: image.alt || product.name })),
@@ -119,6 +129,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             basePrice: Number(product.basePrice)
           }}
           colors={colorOptions}
+          sizes={sizeOptions}
           addons={product.addons.map((item) => ({
             id: item.id,
             name: item.addon.name,
@@ -131,6 +142,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             madeToOrder: dict.madeToOrder,
             startsAt: dict.startsAt,
             chooseColor: dict.chooseColor,
+            chooseSize: dict.chooseSize,
             customColorHint: dict.customColorHint,
             addExtras: dict.addExtras,
             included: dict.included,

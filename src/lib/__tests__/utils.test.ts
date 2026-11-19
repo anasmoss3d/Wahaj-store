@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asciiSlug, suggestProductSlug } from "@/lib/utils";
+import { asciiSlug, SKU_SUGGESTED, skuStem, suggestedProductSku, suggestProductSlug } from "@/lib/utils";
 
 describe("asciiSlug", () => {
   it("keeps Latin letters, numbers, and separators", () => {
@@ -33,5 +33,29 @@ describe("suggestProductSlug", () => {
   it("uses a product-... fallback when name and SKU are empty", () => {
     const slug = suggestProductSlug("", "");
     expect(slug).toMatch(/^product-\d+$/);
+  });
+});
+
+describe("skuStem", () => {
+  it("compacts a Latin name to uppercase letters and caps at 14", () => {
+    expect(skuStem("White Luxe Tray 40")).toBe("WHITELUXETRAY4");
+    expect(skuStem("Extraordinary Deluxe Concrete Collection Table")).toBe("EXTRAORDINARYD");
+  });
+
+  it("falls back to WAH for Arabic-only names", () => {
+    expect(skuStem("شمعة الفراولة باللبن")).toBe("WAH");
+    expect(skuStem("  ")).toBe("WAH");
+  });
+});
+
+describe("suggestedProductSku", () => {
+  it("builds a WAH-STEM-### preview from the name", () => {
+    expect(suggestedProductSku("White Luxe Tray 40")).toBe("WAH-WHITELUXETRAY4-315");
+  });
+  // The counter is a stable hash of the exact name, so the preview is only
+  // illustrative — uniqueness is guaranteed server-side at save time.
+  it("uses the generic stem for empty or Arabic-only names", () => {
+    expect(suggestedProductSku("")).toBe(`${SKU_SUGGESTED}-000`);
+    expect(suggestedProductSku("شمعة الفراولة باللبن")).toBe("WAH-WAH-927");
   });
 });

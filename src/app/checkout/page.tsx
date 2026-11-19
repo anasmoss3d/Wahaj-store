@@ -66,6 +66,7 @@ export default async function CheckoutPage() {
                       <p className="font-semibold text-concrete-900">{item.productName}</p>
                       <p className="text-sm text-concrete-500">
                         {item.colorName ? `${item.colorName} · ` : ""}
+                        {item.sizeName ? `${item.sizeName} · ` : ""}
                         {dict.quantity} {item.quantity}
                       </p>
                       <p className="text-sm font-semibold text-wahaj-teal">{formatMoney(item.total)}</p>

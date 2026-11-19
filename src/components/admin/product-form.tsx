@@ -3,11 +3,11 @@
 import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Eye, ImageIcon, Package, Palette, Search, Sparkles } from "lucide-react";
+import { Check, Eye, ImageIcon, Package, Palette, Ruler, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { UploadField } from "@/components/admin/upload-field";
-import { cn, suggestProductSlug } from "@/lib/utils";
+import { cn, SKU_SUGGESTED, suggestedProductSku, suggestProductSlug } from "@/lib/utils";
 
 type Option = { id: string; name: string; hexCode?: string; price?: string };
 type ProductInitial = {
@@ -35,6 +35,12 @@ type ProductInitial = {
     active: boolean;
     sortOrder: number;
   }>;
+  sizes: Array<{
+    sizeId: string;
+    price: string;
+    active: boolean;
+    sortOrder: number;
+  }>;
   addonIds: string[];
 };
 
@@ -42,6 +48,7 @@ const steps = [
   { key: "basic", label: "Basic", icon: Package },
   { key: "images", label: "Images", icon: ImageIcon },
   { key: "colors", label: "Colors", icon: Palette },
+  { key: "sizes", label: "Sizes", icon: Ruler },
   { key: "addons", label: "Add-ons", icon: Sparkles },
   { key: "seo", label: "SEO", icon: Search },
   { key: "preview", label: "Preview", icon: Eye }
@@ -54,7 +61,7 @@ const emptyProduct: ProductInitial = {
   basePrice: "250",
   categoryId: "",
   mainImage: "",
-  sku: "",
+  sku: SKU_SUGGESTED,
   stockQuantity: 20,
   active: false,
   featured: false,
@@ -65,17 +72,20 @@ const emptyProduct: ProductInitial = {
   canonicalUrl: "",
   gallery: [],
   colors: [],
+  sizes: [],
   addonIds: []
 };
 
 export function ProductForm({
   categories,
   colors,
+  sizes,
   addons,
   initial
 }: {
   categories: Option[];
   colors: Option[];
+  sizes: Option[];
   addons: Option[];
   initial?: ProductInitial;
 }) {
@@ -88,6 +98,10 @@ export function ProductForm({
     const slug = (initial?.slug ?? "").trim();
     return Boolean(initial?.id) && slug.length > 0 && /^[a-zA-Z0-9-]+$/.test(slug);
   });
+  // New products show a live SKU preview generated from the name; the real
+  // unique value is created on the server at save time. Existing products
+  // keep the SKU that was already assigned to them.
+  const skuPreview = product.id ? product.sku : product.name.trim() ? suggestedProductSku(product.name) : SKU_SUGGESTED;
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -129,6 +143,38 @@ export function ProductForm({
     }));
   }
 
+  const selectedSizeIds = useMemo(
+    () => new Set(product.sizes.map((item) => item.sizeId)),
+    [product.sizes]
+  );
+
+  function toggleSize(sizeId: string) {
+    setProduct((current) => {
+      const exists = current.sizes.some((item) => item.sizeId === sizeId);
+      return {
+        ...current,
+        sizes: exists
+          ? current.sizes.filter((item) => item.sizeId !== sizeId)
+          : [
+              ...current.sizes,
+              {
+                sizeId,
+                price: current.basePrice || "0",
+                active: true,
+                sortOrder: current.sizes.length
+              }
+            ]
+      };
+    });
+  }
+
+  function updateSize(sizeId: string, patch: Partial<ProductInitial["sizes"][number]>) {
+    setProduct((current) => ({
+      ...current,
+      sizes: current.sizes.map((item) => (item.sizeId === sizeId ? { ...item, ...patch } : item))
+    }));
+  }
+
   function toggleAddon(addonId: string) {
     setProduct((current) => ({
       ...current,
@@ -144,7 +190,11 @@ export function ProductForm({
       // The checkbox set is the source of truth: every selected color is
       // saved/kept as active. This prevents the old "checked but hidden in
       // the storefront" state that used to cause product pages to 404.
-      const payload = { ...product, colors: product.colors.map((item) => ({ ...item, active: true })) };
+      const payload = {
+        ...product,
+        colors: product.colors.map((item) => ({ ...item, active: true })),
+        sizes: product.sizes.map((item) => ({ ...item, active: true }))
+      };
       const response = await fetch(
         product.id ? `/api/admin/products/${product.id}` : "/api/admin/products",
         {
@@ -197,7 +247,7 @@ export function ProductForm({
                     setProduct((current) => ({
                       ...current,
                       name,
-                      slug: slugTouched ? current.slug : suggestProductSlug(name, current.sku)
+                      slug: slugTouched ? current.slug : suggestProductSlug(name, "")
                     }));
                   }}
                 />
@@ -214,18 +264,11 @@ export function ProductForm({
                   }}
                 />
               </Field>
-              <Field label="SKU">
-                <Input
-                  value={product.sku}
-                  onChange={(event) => {
-                    const sku = event.target.value;
-                    setProduct((current) => ({
-                      ...current,
-                      sku,
-                      slug: slugTouched ? current.slug : suggestProductSlug(current.name, sku)
-                    }));
-                  }}
-                />
+              <Field
+                hint="Auto-generated from the product name. No need to fill this in — the unique code is created for you on save."
+                label="SKU"
+              >
+                <Input readOnly value={skuPreview} />
               </Field>
               <Field label="Category">
                 <select
@@ -417,6 +460,47 @@ export function ProductForm({
           </div>
         ) : null}
 
+        {step === "sizes" ? (
+          <div className="grid gap-4">
+            <p className="text-sm text-concrete-500">
+              {product.sizes.length === 0
+                ? "No sizes selected — customers can add the product as-is. Pick a size to require customers to choose one."
+                : `${product.sizes.length} size option(s) selected. Customers must pick one size, and each size has its own full price.`}
+            </p>
+            {sizes.length === 0 ? (
+              <p className="text-sm text-concrete-500">No sizes exist yet. Create them under Sizes first.</p>
+            ) : null}
+            {sizes.map((size) => {
+              const selected = product.sizes.find((item) => item.sizeId === size.id);
+              return (
+                <div className="rounded-md border border-concrete-100 p-4" key={size.id}>
+                  <label className="flex items-center gap-3 font-semibold">
+                    <input
+                      checked={selectedSizeIds.has(size.id)}
+                      className="h-5 w-5 accent-wahaj-teal"
+                      onChange={() => toggleSize(size.id)}
+                      type="checkbox"
+                    />
+                    {size.name}
+                  </label>
+                  {selected ? (
+                    <div className="mt-4 max-w-60">
+                      <Field label="Full price for this product">
+                        <Input
+                          min="1"
+                          type="number"
+                          value={selected.price}
+                          onChange={(event) => updateSize(size.id, { price: event.target.value })}
+                        />
+                      </Field>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+
         {step === "addons" ? (
           <div className="grid gap-3">
             {addons.map((addon) => (
@@ -460,8 +544,8 @@ export function ProductForm({
           <div className="grid gap-4 text-sm text-concrete-700">
             <p>
               <strong>{product.name || "Untitled product"}</strong> will publish with {product.colors.length} color
-              option(s), {product.addonIds.length} add-on(s), stock {product.stockQuantity}, and base price{" "}
-              {product.basePrice} EGP.
+              option(s), {product.sizes.length} size option(s), {product.addonIds.length} add-on(s), stock{" "}
+              {product.stockQuantity}, and base price {product.basePrice} EGP.
             </p>
             {product.mainImage ? (
               <div className="relative h-80 overflow-hidden rounded-md bg-concrete-100">

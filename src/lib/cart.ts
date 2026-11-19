@@ -17,6 +17,7 @@ export type CartViewItem = {
   image: string;
   colorName: string | null;
   colorHex: string | null;
+  sizeName: string | null;
   addons: Array<{ id: string; name: string; price: Prisma.Decimal }>;
   quantity: number;
   unitPrice: Prisma.Decimal;
@@ -83,6 +84,7 @@ async function getCartViewUncached(): Promise<CartView> {
     include: {
       product: true,
       productColor: { include: { color: true } },
+      productSize: { include: { size: true } },
       addons: {
         include: {
           productAddon: {
@@ -101,6 +103,7 @@ async function getCartViewUncached(): Promise<CartView> {
     const addonModels = row.addons.map((entry) => entry.productAddon.addon);
     const calculated = calculateLinePrice({
       basePrice: row.product.basePrice,
+      sizePrice: row.productSize?.price,
       colorAdditionalPrice: row.productColor?.additionalPrice ?? 0,
       addonPrices: addonModels.map((addon) => addon.price),
       quantity: row.quantity
@@ -123,6 +126,7 @@ async function getCartViewUncached(): Promise<CartView> {
         : row.product.mainImage,
       colorName: row.productColor?.color.name ?? null,
       colorHex: row.productColor?.color.hexCode ?? null,
+      sizeName: row.productSize?.size.name ?? null,
       addons: addonModels.map((addon) => ({
         id: addon.id,
         name: addon.name,
@@ -134,7 +138,8 @@ async function getCartViewUncached(): Promise<CartView> {
       signature: cartItemSignature(
         row.productId,
         row.productColorId,
-        row.addons.map((entry) => entry.productAddonId)
+        row.addons.map((entry) => entry.productAddonId),
+        row.productSizeId
       )
     };
   });
@@ -165,6 +170,7 @@ export const getCartView = cache(getCartViewUncached);
 export async function addCartItem(input: {
   productId: string;
   productColorId?: string | null;
+  productSizeId?: string | null;
   productAddonIds: string[];
   quantity: number;
 }) {
@@ -172,7 +178,9 @@ export async function addCartItem(input: {
   if (!cart) throw new AppError("Your cart could not be opened right now. Please try again.");
 
   const productColorId = input.productColorId ?? null;
+  const productSizeId = input.productSizeId ?? null;
   const hasColor = Boolean(productColorId);
+  const hasSize = Boolean(productSizeId);
 
   const product = await prisma.product.findFirst({
     where: { id: input.productId, active: true },
@@ -182,6 +190,12 @@ export async function addCartItem(input: {
           ? { id: productColorId!, active: true, color: { active: true } }
           : { active: true, color: { active: true } },
         include: { color: true }
+      },
+      sizes: {
+        where: hasSize
+          ? { id: productSizeId!, active: true, size: { active: true } }
+          : { active: true, size: { active: true } },
+        include: { size: true }
       },
       addons: {
         where: { id: { in: input.productAddonIds }, active: true },
@@ -196,6 +210,12 @@ export async function addCartItem(input: {
   }
   if (!hasColor && product.colors.length > 0) {
     throw new AppError("This product has colors — please choose one.");
+  }
+  if (hasSize && product.sizes.length !== 1) {
+    throw new AppError("This product size is no longer available.");
+  }
+  if (!hasSize && product.sizes.length > 0) {
+    throw new AppError("This product comes in sizes — please choose one.");
   }
 
   if (input.productAddonIds.length !== product.addons.length) {
@@ -212,7 +232,8 @@ export async function addCartItem(input: {
     where: {
       cartId: cart.id,
       productId: input.productId,
-      productColorId
+      productColorId,
+      productSizeId
     },
     include: { addons: true }
   });
@@ -220,14 +241,16 @@ export async function addCartItem(input: {
   const requestedSignature = cartItemSignature(
     input.productId,
     productColorId,
-    input.productAddonIds
+    input.productAddonIds,
+    productSizeId
   );
   const existing = existingItems.find(
     (item) =>
       cartItemSignature(
         item.productId,
         item.productColorId,
-        item.addons.map((addon) => addon.productAddonId)
+        item.addons.map((addon) => addon.productAddonId),
+        item.productSizeId
       ) === requestedSignature
   );
 
@@ -243,6 +266,7 @@ export async function addCartItem(input: {
       cartId: cart.id,
       productId: input.productId,
       productColorId,
+      productSizeId,
       quantity: input.quantity,
       displayImage: color
         ? getProductColorImageUrl(

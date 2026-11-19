@@ -3,6 +3,7 @@ import { centsToDecimal, toCents } from "@/lib/money";
 
 export type PriceSelection = {
   basePrice: MoneyInput;
+  sizePrice?: MoneyInput;
   colorAdditionalPrice: MoneyInput;
   addonPrices: MoneyInput[];
   quantity: number;
@@ -18,8 +19,11 @@ export const ORDER_STATUS_FLOW = [
 ] as const;
 
 export function calculateUnitPriceCents(selection: Omit<PriceSelection, "quantity">) {
+  // A selected size carries a FULL price for the product, so it replaces the
+  // base price instead of adding to it (colors still add on top).
+  const priceBase = selection.sizePrice != null && selection.sizePrice !== "" ? selection.sizePrice : selection.basePrice;
   return (
-    toCents(selection.basePrice) +
+    toCents(priceBase) +
     toCents(selection.colorAdditionalPrice) +
     selection.addonPrices.reduce<number>((sum, price) => sum + toCents(price), 0)
   );
@@ -42,9 +46,10 @@ export function calculateLinePrice(selection: PriceSelection) {
 export function cartItemSignature(
   productId: string,
   productColorId: string | null,
-  productAddonIds: string[]
+  productAddonIds: string[],
+  productSizeId: string | null = null
 ) {
-  return [productId, productColorId ?? "", ...productAddonIds.slice().sort()].join(":");
+  return [productId, productColorId ?? "", productSizeId ?? "", ...productAddonIds.slice().sort()].join(":");
 }
 
 export function canMoveOrderStatus(from: string, to: string) {

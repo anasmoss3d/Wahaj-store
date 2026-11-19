@@ -204,6 +204,7 @@ model Product {
   updatedAt       DateTime        @updatedAt
   images          ProductImage[]
   colors          ProductColor[]
+  sizes           ProductSize[]
   addons          ProductAddon[]
   cartItems       CartItem[]
   orderItems      OrderItem[]
@@ -239,6 +240,37 @@ model Color {
   updatedAt   DateTime       @updatedAt
 
   @@index([active, sortOrder])
+}
+
+model Size {
+  id        String        @id @default(cuid())
+  name      String
+  active    Boolean       @default(true)
+  sortOrder Int           @default(0)
+  products  ProductSize[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+// Per-product link of a global size to a FULL price for that product.
+// A product may list no sizes at all; when it lists one or more, the
+// customer must pick one before the item can be added to the cart.
+model ProductSize {
+  id        String   @id @default(cuid())
+  productId String
+  sizeId    String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      Size     @relation(fields: [sizeId], references: [id])
+  price     Decimal  @db.Decimal(10, 2)
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  cartItems CartItem[]
+
+  @@unique([productId, sizeId])
+  @@index([productId, active, sortOrder])
+  @@index([sizeId])
 }
 
 model ProductColor {
@@ -308,9 +340,11 @@ model CartItem {
   cartId         String
   productId      String
   productColorId String?
+  productSizeId  String?
   cart           Cart             @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product        Product          @relation(fields: [productId], references: [id])
   productColor   ProductColor?    @relation(fields: [productColorId], references: [id], onDelete: SetNull)
+  productSize    ProductSize?     @relation(fields: [productSizeId], references: [id], onDelete: SetNull)
   quantity       Int
   displayImage   String
   createdAt      DateTime         @default(now())
@@ -320,6 +354,7 @@ model CartItem {
   @@index([cartId])
   @@index([productId])
   @@index([productColorId])
+  @@index([productSizeId])
 }
 
 model CartItemAddon {
@@ -378,6 +413,7 @@ model OrderItem {
   sku                  String
   selectedColorName    String
   selectedColorHex     String
+  selectedSizeName     String           @default("")
   colorAdditionalPrice Decimal          @db.Decimal(10, 2)
   basePrice            Decimal          @db.Decimal(10, 2)
   finalUnitPrice       Decimal          @db.Decimal(10, 2)

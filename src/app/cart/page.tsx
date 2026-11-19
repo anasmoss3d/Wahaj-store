@@ -51,6 +51,9 @@ export default async function CartPage() {
                         {item.colorName}
                       </p>
                     ) : null}
+                    {item.sizeName ? (
+                      <p className="mt-1 text-sm text-concrete-600">Size: {item.sizeName}</p>
+                    ) : null}
                     {item.addons.length ? (
                       <ul className="mt-3 grid gap-1 text-sm text-concrete-600">
                         {item.addons.map((addon) => (

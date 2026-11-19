@@ -29,6 +29,12 @@ type AddonOption = {
   imageUrl?: string | null;
 };
 
+type SizeOption = {
+  id: string;
+  name: string;
+  price: number;
+};
+
 type GalleryImage = {
   url: string;
   alt: string;
@@ -43,18 +49,21 @@ const formatter = new Intl.NumberFormat("en-EG", {
 export function ProductCustomizer({
   product,
   colors,
+  sizes,
   addons,
   images,
   labels
 }: {
   product: ProductOption;
   colors: ColorOption[];
+  sizes: SizeOption[];
   addons: AddonOption[];
   images: GalleryImage[];
   labels: {
     madeToOrder: string;
     startsAt: string;
     chooseColor: string;
+    chooseSize: string;
     customColorHint: string;
     addExtras: string;
     included: string;
@@ -71,6 +80,9 @@ export function ProductCustomizer({
 }) {
   const router = useRouter();
   const [selectedColorId, setSelectedColorId] = useState(colors[0]?.id ?? "");
+  // Sizes are a required choice (when the product offers any), so start with
+  // nothing selected and keep the add-to-cart buttons disabled until picked.
+  const [selectedSizeId, setSelectedSizeId] = useState("");
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -79,6 +91,8 @@ export function ProductCustomizer({
   const [isPending, startTransition] = useTransition();
 
   const selectedColor = colors.find((color) => color.id === selectedColorId) ?? colors[0];
+  const selectedSize = sizes.find((size) => size.id === selectedSizeId) ?? null;
+  const sizeRequired = sizes.length > 0 && !selectedSize;
   const galleryImages = useMemo(() => {
     const candidates = [
       ...(selectedColor
@@ -91,12 +105,14 @@ export function ProductCustomizer({
   const activeImage = galleryImages.find((image) => image.url === selectedImageUrl) ?? galleryImages[0];
   const activeImageIndex = galleryImages.findIndex((image) => image.url === activeImage?.url);
   const selectedAddons = addons.filter((addon) => selectedAddonIds.includes(addon.id));
+  // A selected size carries the FULL price for the product (the base price
+  // only shows as "starts at" when the customer has not picked a size yet).
   const unitPrice = useMemo(
     () =>
-      product.basePrice +
+      (selectedSize ? selectedSize.price : product.basePrice) +
       (selectedColor?.additionalPrice ?? 0) +
       selectedAddons.reduce((sum, addon) => sum + addon.price, 0),
-    [product.basePrice, selectedAddons, selectedColor]
+    [product.basePrice, selectedAddons, selectedColor, selectedSize]
   );
   const total = unitPrice * quantity;
 
@@ -122,6 +138,7 @@ export function ProductCustomizer({
         body: JSON.stringify({
           productId: product.id,
           productColorId: selectedColorId || null,
+          productSizeId: selectedSizeId || null,
           productAddonIds: selectedAddonIds,
           quantity
         })
@@ -215,7 +232,11 @@ export function ProductCustomizer({
           </p>
           <h1 className="mt-2 text-3xl font-bold text-concrete-900 md:text-5xl">{product.name}</h1>
           <p className="mt-3 text-lg font-semibold text-wahaj-teal">
-            {labels.startsAt} {formatter.format(product.basePrice)}
+            {sizes.length > 0
+              ? selectedSize
+                ? formatter.format(selectedSize.price)
+                : `${labels.startsAt} ${formatter.format(Math.min(...sizes.map((size) => size.price)))}`
+              : `${labels.startsAt} ${formatter.format(product.basePrice)}`}
           </p>
         </div>
 
@@ -266,6 +287,32 @@ export function ProductCustomizer({
                 {labels.customColorHint}
               </p>
             ) : null}
+          </div>
+        ) : null}
+
+        {sizes.length > 0 ? (
+          <div className="grid gap-3">
+            <h2 className="font-semibold text-concrete-900">{labels.chooseSize}</h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {sizes.map((size) => (
+                <button
+                  className={cn(
+                    "flex min-h-14 flex-col items-start justify-center rounded-md border px-3 text-start text-sm transition",
+                    selectedSizeId === size.id
+                      ? "border-wahaj-teal bg-wahaj-teal/5"
+                      : "border-concrete-200 bg-white"
+                  )}
+                  key={size.id}
+                  onClick={() => setSelectedSizeId(size.id)}
+                  type="button"
+                >
+                  <span className="font-semibold text-concrete-900">{size.name}</span>
+                  <span className="text-xs font-semibold text-wahaj-teal">
+                    {formatter.format(size.price)}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -344,11 +391,11 @@ export function ProductCustomizer({
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Button disabled={isPending || (colors.length > 0 && !selectedColorId)} onClick={() => addToCart(false)}>
+          <Button disabled={isPending || sizeRequired || (colors.length > 0 && !selectedColorId)} onClick={() => addToCart(false)}>
             <ShoppingBag size={18} /> {labels.addToCart}
           </Button>
           <Button
-            disabled={isPending || (colors.length > 0 && !selectedColorId)}
+            disabled={isPending || sizeRequired || (colors.length > 0 && !selectedColorId)}
             onClick={() => addToCart(true)}
             variant="secondary"
           >

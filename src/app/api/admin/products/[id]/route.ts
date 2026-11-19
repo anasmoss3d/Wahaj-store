@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
 import { safeErrorMessage } from "@/lib/errors";
-import { assertActiveColors, resolveProductSlug } from "@/lib/product-utils";
+import { assertActiveColors, assertActiveSizes, resolveProductSlug, resolveProductSku } from "@/lib/product-utils";
 import { adminProductSchema, idSchema } from "@/lib/validators";
 
 type Params = {
@@ -22,12 +22,13 @@ export async function PUT(request: Request, { params }: Params) {
     const parsed = adminProductSchema.parse(await request.json());
     const current = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true, slug: true }
+      select: { id: true, slug: true, sku: true }
     });
     if (!current) {
       return NextResponse.json({ ok: false, message: "Product not found." }, { status: 404 });
     }
     await assertActiveColors(parsed.colors.map((color) => color.colorId));
+    await assertActiveSizes(parsed.sizes.map((size) => size.sizeId));
     const slug = await resolveProductSlug({
       name: parsed.name,
       sku: parsed.sku,
@@ -35,10 +36,17 @@ export async function PUT(request: Request, { params }: Params) {
       productSlug: current.slug,
       productId
     });
+    const sku = await resolveProductSku({
+      name: parsed.name,
+      sku: parsed.sku,
+      currentSku: current.sku,
+      productId
+    });
 
     const product = await prisma.$transaction(async (tx) => {
       await tx.productImage.deleteMany({ where: { productId } });
       await tx.productColor.deleteMany({ where: { productId } });
+      await tx.productSize.deleteMany({ where: { productId } });
       await tx.productAddon.deleteMany({ where: { productId } });
 
       return tx.product.update({
@@ -50,7 +58,7 @@ export async function PUT(request: Request, { params }: Params) {
           basePrice: new Prisma.Decimal(parsed.basePrice),
           categoryId: parsed.categoryId,
           mainImage: parsed.mainImage,
-          sku: parsed.sku,
+          sku,
           stockQuantity: parsed.stockQuantity,
           active: parsed.active,
           featured: parsed.featured,
@@ -73,6 +81,14 @@ export async function PUT(request: Request, { params }: Params) {
               imageUrl: color.imageUrl,
               active: color.active,
               sortOrder: color.sortOrder
+            }))
+          },
+          sizes: {
+            create: parsed.sizes.map((size) => ({
+              sizeId: size.sizeId,
+              price: new Prisma.Decimal(size.price),
+              active: size.active,
+              sortOrder: size.sortOrder
             }))
           },
           addons: {

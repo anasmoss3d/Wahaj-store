@@ -30,6 +30,12 @@ const colors = [
   ["Custom Color", "#187d6d", 5]
 ] as const;
 
+const sizes = [
+  ["50g", 0],
+  ["100g", 1],
+  ["150g", 2]
+] as const;
+
 const addons = [
   ["Gold Leaf", "Hand-applied gold leaf details.", 30, "/seed/black-luxury-set.jpg", 0],
   ["Silver Leaf", "Silver leaf texture and rim details.", 25, "/seed/pearl-silver-set.jpg", 1],
@@ -101,6 +107,14 @@ async function main() {
       data: { name, hexCode, sortOrder, active: true }
     });
     colorRows.set(name, color.id);
+  }
+
+  const sizeRows = new Map<string, string>();
+  for (const [name, sortOrder] of sizes) {
+    const size = await prisma.size.create({
+      data: { name, sortOrder, active: true }
+    });
+    sizeRows.set(name, size.id);
   }
 
   const addonRows = new Map<string, string>();

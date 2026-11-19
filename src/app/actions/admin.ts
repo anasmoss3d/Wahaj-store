@@ -17,6 +17,7 @@ import {
   orderItemEditSchema,
   orderStatusInputSchema,
   shippingRateInputSchema,
+  sizeInputSchema,
   storeSettingsSchema
 } from "@/lib/validators";
 import { deleteOrder, updateOrderCustomer, updateOrderItemQuantity, updateOrderStatus } from "@/lib/orders";
@@ -123,6 +124,35 @@ export async function createAddonAction(
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
     return { error: await safeErrorMessage(error, "Could not create add-on.") };
+  }
+}
+
+export async function createSizeAction(
+  _state: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    await assertSameOrigin();
+    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const parsed = sizeInputSchema.parse({
+      name: value(formData, "name"),
+      active: checkbox(formData, "active"),
+      sortOrder: Number(value(formData, "sortOrder") || 0)
+    });
+    const row = await prisma.size.create({ data: parsed });
+    await prisma.auditLog.create({
+      data: {
+        adminUserId: admin.id,
+        action: "SIZE_CREATED",
+        entityType: "Size",
+        entityId: row.id
+      }
+    });
+    revalidatePath("/admin/sizes");
+    return { success: "Size created." };
+  } catch (error) {
+    if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
+    return { error: await safeErrorMessage(error, "Could not create size.") };
   }
 }
 
@@ -323,6 +353,61 @@ export async function deleteColorAction(
     return { success: "Color deleted." };
   } catch (error) {
     return { error: await safeErrorMessage(error, "Could not delete color.") };
+  }
+}
+
+export async function updateSizeAction(
+  _state: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    await assertSameOrigin();
+    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const parsed = sizeInputSchema.parse({
+      name: value(formData, "name"),
+      active: checkbox(formData, "active"),
+      sortOrder: Number(value(formData, "sortOrder") || 0)
+    });
+    const row = await prisma.size.update({ where: { id: idValue(formData) }, data: parsed });
+    await prisma.auditLog.create({
+      data: {
+        adminUserId: admin.id,
+        action: "SIZE_UPDATED",
+        entityType: "Size",
+        entityId: row.id
+      }
+    });
+    revalidatePath("/admin/sizes");
+    return { success: "Size updated." };
+  } catch (error) {
+    if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
+    return { error: await safeErrorMessage(error, "Could not update size.") };
+  }
+}
+
+export async function deleteSizeAction(
+  _state: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    await assertSameOrigin();
+    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const id = idValue(formData);
+    const used = await prisma.productSize.count({ where: { sizeId: id } });
+    if (used > 0) return { error: "Size is used by products and cannot be deleted." };
+    await prisma.size.delete({ where: { id } });
+    await prisma.auditLog.create({
+      data: {
+        adminUserId: admin.id,
+        action: "SIZE_DELETED",
+        entityType: "Size",
+        entityId: id
+      }
+    });
+    revalidatePath("/admin/sizes");
+    return { success: "Size deleted." };
+  } catch (error) {
+    return { error: await safeErrorMessage(error, "Could not delete size.") };
   }
 }
 

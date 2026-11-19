@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
 import { safeErrorMessage } from "@/lib/errors";
-import { assertActiveColors, resolveProductSlug } from "@/lib/product-utils";
+import { assertActiveColors, assertActiveSizes, resolveProductSlug, resolveProductSku } from "@/lib/product-utils";
 import { adminProductSchema } from "@/lib/validators";
 
 export async function POST(request: Request) {
@@ -15,11 +15,13 @@ export async function POST(request: Request) {
     const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
     const parsed = adminProductSchema.parse(await request.json());
     await assertActiveColors(parsed.colors.map((color) => color.colorId));
+    await assertActiveSizes(parsed.sizes.map((size) => size.sizeId));
     const slug = await resolveProductSlug({
       name: parsed.name,
       sku: parsed.sku,
       slug: parsed.slug
     });
+    const sku = await resolveProductSku({ name: parsed.name, sku: parsed.sku });
 
     const product = await prisma.product.create({
       data: {
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
         basePrice: new Prisma.Decimal(parsed.basePrice),
         categoryId: parsed.categoryId,
         mainImage: parsed.mainImage,
-        sku: parsed.sku,
+        sku,
         stockQuantity: parsed.stockQuantity,
         active: parsed.active,
         featured: parsed.featured,
@@ -52,6 +54,14 @@ export async function POST(request: Request) {
             imageUrl: color.imageUrl,
             active: color.active,
             sortOrder: color.sortOrder
+          }))
+        },
+        sizes: {
+          create: parsed.sizes.map((size) => ({
+            sizeId: size.sizeId,
+            price: new Prisma.Decimal(size.price),
+            active: size.active,
+            sortOrder: size.sortOrder
           }))
         },
         addons: {
