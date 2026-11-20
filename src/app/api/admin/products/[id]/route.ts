@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -119,6 +120,13 @@ export async function PUT(request: Request, { params }: Params) {
     revalidatePath("/admin/products");
     return NextResponse.json({ ok: true, productId: product.id });
   } catch (error) {
+    if (error instanceof ZodError) {
+      const issue = error.issues[0];
+      return NextResponse.json(
+        { ok: false, message: `Invalid ${issue.path.join(".") || "input"}: ${issue.message}` },
+        { status: 400 }
+      );
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json(
         { ok: false, message: "This slug or SKU is already in use." },
