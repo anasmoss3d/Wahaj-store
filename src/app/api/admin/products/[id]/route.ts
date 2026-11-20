@@ -48,6 +48,17 @@ export async function PUT(request: Request, { params }: Params) {
       await tx.productImage.deleteMany({ where: { productId } });
       await tx.productColor.deleteMany({ where: { productId } });
       await tx.productSize.deleteMany({ where: { productId } });
+      // Carts may still reference the old add-on rows (CartItemAddon has no
+      // cascade), so detach them first or the delete below fails with P2003.
+      const oldAddons = await tx.productAddon.findMany({
+        where: { productId },
+        select: { id: true }
+      });
+      if (oldAddons.length) {
+        await tx.cartItemAddon.deleteMany({
+          where: { productAddonId: { in: oldAddons.map((row) => row.id) } }
+        });
+      }
       await tx.productAddon.deleteMany({ where: { productId } });
 
       return tx.product.update({
