@@ -133,8 +133,20 @@ export async function PUT(request: Request, { params }: Params) {
         { status: 400 }
       );
     }
+    // Admin-only diagnostic: surface which database constraint or value broke
+    // the save so the product form can show a useful message.
+    const detail =
+      error instanceof Prisma.PrismaClientKnownRequestError
+        ? `${error.code} ${JSON.stringify(error.meta ?? {})}`
+        : error instanceof Error
+          ? `${error.name}: ${error.message.split("\n").slice(0, 3).join(" ")}`
+          : String(error);
     return NextResponse.json(
-      { ok: false, message: await safeErrorMessage(error, "Could not update product. Please try again.") },
+      {
+        ok: false,
+        message: await safeErrorMessage(error, "Could not update product. Please try again."),
+        detail
+      },
       { status: 400 }
     );
   }

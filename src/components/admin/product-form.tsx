@@ -203,9 +203,14 @@ export function ProductForm({
           body: JSON.stringify(payload)
         }
       );
-      const json = (await response.json()) as { ok: boolean; productId?: string; message?: string };
+      const json = (await response.json()) as {
+        ok: boolean;
+        productId?: string;
+        message?: string;
+        detail?: string;
+      };
       if (!json.ok) {
-        setMessage(json.message ?? "Could not save product.");
+        setMessage([json.message ?? "Could not save product.", json.detail].filter(Boolean).join(" — "));
         return;
       }
       router.push("/admin/products");
