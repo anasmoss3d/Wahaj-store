@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default function AdminLoginPage() {
   return (
-    <main className="grid min-h-screen place-items-center px-4 py-10">
+    <main className="grid min-h-screen place-items-center px-4 py-10" dir="ltr">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center gap-3">
           <Image

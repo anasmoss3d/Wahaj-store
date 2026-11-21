@@ -20,14 +20,14 @@ export async function ProductCard({ product }: { product: Product }) {
           />
         </div>
       </a>
-      <div className="grid gap-3 p-4">
+      <div className="grid gap-3 p-3 sm:p-4">
         <div>
-          <p className="text-sm text-concrete-500">{product.sku}</p>
-          <h3 className="mt-1 text-lg font-semibold text-concrete-900">{product.name}</h3>
+          <p className="text-xs text-concrete-500 sm:text-sm">{product.sku}</p>
+          <h3 className="mt-1 text-base font-semibold text-concrete-900 sm:text-lg">{product.name}</h3>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="font-bold text-wahaj-teal">{formatMoney(product.basePrice)}</span>
-          <ButtonLink href={`/products/${product.slug}`} variant="ghost">
+          <ButtonLink className="px-3 text-xs sm:px-4 sm:text-sm" href={`/products/${product.slug}`} variant="ghost">
             {dict.customize}
           </ButtonLink>
         </div>

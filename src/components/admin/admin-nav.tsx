@@ -17,28 +17,56 @@ const links = [
 
 export function AdminNav() {
   return (
-    <aside className="sticky top-0 z-40 border-b border-concrete-100 bg-white lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-e">
-      <div className="flex items-center gap-3 p-4 lg:grid lg:gap-5">
-        <a className="shrink-0 text-lg font-bold text-concrete-900 lg:text-xl" href="/admin">
+    <aside className="sticky top-0 z-40 border-b border-concrete-100 bg-white shadow-soft lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-e lg:shadow-none">
+      {/* Mobile: brand row + logout, then a scrollable tab strip. */}
+      <div className="flex items-center justify-between gap-3 px-4 pt-3 lg:hidden">
+        <a className="shrink-0 text-lg font-bold text-concrete-900" href="/admin">
           Wahaj Admin
         </a>
-        <nav className="flex flex-1 gap-1 overflow-x-auto lg:grid lg:flex-none">
+        <form action={adminLogoutAction} className="shrink-0">
+          <Button className="px-3" type="submit" variant="ghost">
+            Sign out
+          </Button>
+        </form>
+      </div>
+      <nav className="flex gap-1 overflow-x-auto px-3 pb-2 pt-2 lg:hidden">
+        {links.map((link) => {
+          const Icon = link.icon;
+          return (
+            <a
+              className="flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-semibold text-concrete-700 hover:bg-concrete-50"
+              href={link.href}
+              key={link.href}
+            >
+              <Icon size={18} />
+              <span>{link.label}</span>
+            </a>
+          );
+        })}
+      </nav>
+
+      {/* Desktop: vertical sidebar with brand, links, logout. */}
+      <div className="hidden flex-col gap-1 p-5 lg:grid">
+        <a className="mb-6 text-xl font-bold text-concrete-900" href="/admin">
+          Wahaj Admin
+        </a>
+        <nav className="grid gap-1">
           {links.map((link) => {
             const Icon = link.icon;
             return (
               <a
-                className="flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-semibold text-concrete-700 hover:bg-concrete-50"
+                className="flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold text-concrete-700 hover:bg-concrete-50"
                 href={link.href}
                 key={link.href}
               >
                 <Icon size={18} />
-                <span className="hidden sm:inline">{link.label}</span>
+                {link.label}
               </a>
             );
           })}
         </nav>
-        <form action={adminLogoutAction} className="shrink-0">
-          <Button className="px-3" type="submit" variant="ghost">
+        <form action={adminLogoutAction} className="mt-6">
+          <Button className="w-full" type="submit" variant="ghost">
             Sign out
           </Button>
         </form>

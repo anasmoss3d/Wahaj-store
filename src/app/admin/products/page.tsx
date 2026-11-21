@@ -28,7 +28,60 @@ export default async function AdminProductsPage() {
           <Plus size={18} /> New product
         </ButtonLink>
       </div>
-      <div className="mt-8 overflow-x-auto rounded-md border border-concrete-100 bg-white shadow-soft">
+      {/* Mobile: product cards. */}
+      <div className="mt-6 grid gap-3 md:hidden">
+        {products.map((product) => (
+          <article className="rounded-xl border border-concrete-100 bg-white p-4 shadow-soft" key={product.id}>
+            <a className="flex items-center gap-3" href={`/admin/products/${product.id}`}>
+              <Image
+                alt=""
+                className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                height={80}
+                src={product.mainImage}
+                width={80}
+              />
+              <span className="min-w-0">
+                <span className="block truncate font-bold text-concrete-900">{product.name}</span>
+                <span className="text-xs text-concrete-500">{product.sku}</span>
+              </span>
+            </a>
+            <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-concrete-100 pt-3 text-sm">
+              <div>
+                <dt className="text-concrete-500">Category</dt>
+                <dd className="font-semibold text-concrete-900">{product.category.name}</dd>
+              </div>
+              <div>
+                <dt className="text-concrete-500">Price</dt>
+                <dd className="font-semibold text-concrete-900">{formatMoney(product.basePrice)}</dd>
+              </div>
+              <div>
+                <dt className="text-concrete-500">Stock</dt>
+                <dd className="font-semibold text-concrete-900">{product.stockQuantity}</dd>
+              </div>
+              <div>
+                <dt className="text-concrete-500">Options</dt>
+                <dd className="text-concrete-600">
+                  {product.colors.length} colors · {product.addons.length} add-ons
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-concrete-100 pt-3">
+              <span
+                className={
+                  product.active
+                    ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                    : "rounded-full bg-concrete-100 px-3 py-1 text-xs font-semibold text-concrete-600"
+                }
+              >
+                {product.active ? "Active" : "Inactive"}
+              </span>
+              <DeleteProductButton id={product.id} name={product.name} />
+            </div>
+          </article>
+        ))}
+      </div>
+      {/* Desktop: table. */}
+      <div className="mt-8 hidden overflow-x-auto rounded-xl border border-concrete-100 bg-white shadow-soft md:block">
         <table className="w-full min-w-[860px] text-start text-sm">
           <thead className="bg-concrete-50 text-concrete-500">
             <tr>

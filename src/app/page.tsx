@@ -46,7 +46,7 @@ export default async function HomePage() {
     <>
       <StorefrontHeader />
       <main>
-        <section className="relative min-h-[calc(100svh-76px)] overflow-hidden bg-concrete-900 text-white">
+        <section className="relative overflow-hidden bg-concrete-900 text-white">
           <Image
             alt="Wahaj luxury concrete decor"
             className="object-cover opacity-70"
@@ -56,13 +56,13 @@ export default async function HomePage() {
             src={settings.heroImage || "/seed/black-luxury-set.jpg"}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-concrete-900 via-concrete-900/65 to-transparent rtl:bg-gradient-to-l" />
-          <div className="relative mx-auto flex min-h-[calc(100svh-76px)] max-w-7xl items-center px-4 py-16">
+          <div className="relative mx-auto flex max-w-7xl items-center px-4 py-14 md:min-h-[calc(100svh-88px)] md:py-20">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-wahaj-gold">
                 {dict.heroKicker}
               </p>
-              <h1 className="mt-4 text-5xl font-bold leading-tight md:text-7xl">{dict.storeNameFull}</h1>
-              <p className="mt-5 max-w-xl text-lg leading-8 text-concrete-100">{dict.heroText}</p>
+              <h1 className="mt-4 text-4xl font-bold leading-tight sm:text-5xl md:text-7xl">{dict.storeNameFull}</h1>
+              <p className="mt-5 max-w-xl text-base leading-7 text-concrete-100 sm:text-lg sm:leading-8">{dict.heroText}</p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink href="/products">
                   {dict.shopProducts} <ArrowRight size={18} className="rtl:rotate-180" />
@@ -75,7 +75,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-16">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-wahaj-gold">
@@ -112,7 +112,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto grid max-w-7xl gap-10 px-4 py-16 lg:grid-cols-[0.9fr_1.1fr]" id="customization">
+        <section className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:py-16 lg:grid-cols-[0.9fr_1.1fr]" id="customization">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-wahaj-gold">
               {dict.whyWahaj}
@@ -139,7 +139,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-16">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
           <div className="mb-8">
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-wahaj-gold">
               {dict.newArrivals}
@@ -177,7 +177,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-16">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
           <h2 className="text-3xl font-bold text-concrete-900">{dict.howItWorks}</h2>
           <div className="mt-6 grid gap-5 md:grid-cols-3">
             {[
@@ -216,7 +216,7 @@ export default async function HomePage() {
             </div>
           </section>
         ) : null}
-        <section className="mx-auto max-w-7xl px-4 py-16">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
           <div className="flex flex-wrap items-center justify-between gap-6 rounded-md bg-wahaj-teal p-8 text-white">
             <div>
               <h2 className="text-3xl font-bold">{dict.whatsappCtaTitle}</h2>

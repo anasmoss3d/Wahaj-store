@@ -1,7 +1,7 @@
 import { AdminShell } from "@/components/admin/admin-shell";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { cairoDayEnd, cairoDayKey, cairoDayStart } from "@/lib/datetime";
+import { cairoDayEnd, cairoDayKey, cairoDayStart, nextCairoDayKey } from "@/lib/datetime";
 import { formatMoney, toCents } from "@/lib/money";
 import { PERMISSIONS } from "@/lib/rbac";
 
@@ -104,8 +104,9 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
   let cursorKey = fromKey;
   while (cursorKey <= toKey && days.length < 62) {
     days.push({ key: cursorKey, label: cursorKey.slice(8), cents: 0 });
-    const next = new Date(cairoDayStart(cursorKey).getTime() + 24 * 3600 * 1000);
-    cursorKey = cairoDayKey(next);
+    // Date-key arithmetic (not raw ms +24h, which can repeat a day across
+    // daylight-saving transitions and produce duplicate keys).
+    cursorKey = nextCairoDayKey(cursorKey);
   }
   const byDay = new Map(days.map((day) => [day.key, day]));
   for (const order of ordersInRange) {
@@ -129,26 +130,26 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
 
   return (
     <AdminShell>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-concrete-900">Overview</h1>
           <p className="mt-2 text-concrete-600">Orders, revenue, products, and customer growth.</p>
         </div>
-        <form className="flex gap-2">
+        <form className="grid grid-cols-2 gap-2 md:flex md:items-center">
           <input
-            className="min-h-10 rounded-md border border-concrete-200 px-3 text-sm"
+            className="min-h-11 rounded-md border border-concrete-200 px-3 text-sm"
             defaultValue={fromKey}
             name="from"
             type="date"
           />
           <input
-            className="min-h-10 rounded-md border border-concrete-200 px-3 text-sm"
+            className="min-h-11 rounded-md border border-concrete-200 px-3 text-sm"
             defaultValue={toKey}
             name="to"
             type="date"
           />
           <button
-            className="min-h-10 rounded-md bg-concrete-900 px-4 text-sm font-semibold text-white"
+            className="min-h-11 rounded-md bg-concrete-900 px-4 text-sm font-semibold text-white"
             type="submit"
           >
             Filter
@@ -156,26 +157,26 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
         </form>
       </div>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-3">
         {metrics.map(([label, value]) => (
-          <article className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft" key={label}>
-            <p className="text-sm text-concrete-500">{label}</p>
-            <p className="mt-3 text-3xl font-bold text-concrete-900">{value}</p>
+          <article className="rounded-xl border border-concrete-100 bg-white p-4 shadow-soft sm:p-5" key={label}>
+            <p className="text-xs text-concrete-500 sm:text-sm">{label}</p>
+            <p className="mt-2 text-xl font-bold text-concrete-900 sm:mt-3 sm:text-3xl">{value}</p>
           </article>
         ))}
       </section>
 
       <section className="mt-6 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
+        <article className="rounded-xl border border-concrete-100 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-bold text-concrete-900">Sales in range</h2>
           <p className="mt-1 text-sm text-concrete-500">
             {formatMoney(String(rangeRevenueCents / 100))} · {rangeOrders} orders · AOV{" "}
             {formatMoney(String(averageOrderValue))}
           </p>
-          <div className="mt-5 flex h-40 items-end gap-1">
+          <div className="mt-5 flex h-40 items-end gap-1 overflow-hidden">
             {days.map((day) => (
               <div
-                className="min-w-2 flex-1 rounded-t bg-wahaj-teal/80"
+                className="min-w-0 flex-1 rounded-t bg-wahaj-teal/80"
                 key={day.key}
                 style={{ height: `${Math.max(3, (day.cents / maxDay) * 100)}%` }}
                 title={`${day.key}: ${formatMoney(String(day.cents / 100))}`}
@@ -188,7 +189,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
           </div>
         </article>
 
-        <article className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
+        <article className="rounded-xl border border-concrete-100 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-bold text-concrete-900">Orders by status</h2>
           <div className="mt-4 grid gap-2 text-sm">
             {statusGroups.length === 0 ? (
@@ -206,7 +207,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
       </section>
 
       <section className="mt-4 grid gap-4 lg:grid-cols-3">
-        <article className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
+        <article className="rounded-xl border border-concrete-100 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-bold text-concrete-900">Best sellers</h2>
           <div className="mt-4 grid gap-2 text-sm">
             {bestSellers.length === 0 ? (
@@ -221,7 +222,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
             )}
           </div>
         </article>
-        <article className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
+        <article className="rounded-xl border border-concrete-100 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-bold text-concrete-900">Top colors</h2>
           <div className="mt-4 grid gap-2 text-sm">
             {topColors.length === 0 ? (
@@ -239,7 +240,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
             )}
           </div>
         </article>
-        <article className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
+        <article className="rounded-xl border border-concrete-100 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-bold text-concrete-900">Top add-ons</h2>
           <div className="mt-4 grid gap-2 text-sm">
             {topAddons.length === 0 ? (

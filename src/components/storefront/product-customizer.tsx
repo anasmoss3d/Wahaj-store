@@ -52,13 +52,15 @@ export function ProductCustomizer({
   sizes,
   addons,
   images,
-  labels
+  labels,
+  action
 }: {
   product: ProductOption;
   colors: ColorOption[];
   sizes: SizeOption[];
   addons: AddonOption[];
   images: GalleryImage[];
+  action?: React.ReactNode;
   labels: {
     madeToOrder: string;
     startsAt: string;
@@ -159,6 +161,7 @@ export function ProductCustomizer({
   }
 
   return (
+    <>
     <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="grid content-start gap-3">
         <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-concrete-100">
@@ -225,19 +228,22 @@ export function ProductCustomizer({
           </div>
         ) : null}
       </div>
-      <div className="grid content-start gap-7">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.12em] text-wahaj-gold">
-            {labels.madeToOrder}
-          </p>
-          <h1 className="mt-2 text-3xl font-bold text-concrete-900 md:text-5xl">{product.name}</h1>
-          <p className="mt-3 text-lg font-semibold text-wahaj-teal">
-            {sizes.length > 0
-              ? selectedSize
-                ? formatter.format(selectedSize.price)
-                : `${labels.startsAt} ${formatter.format(Math.min(...sizes.map((size) => size.price)))}`
-              : `${labels.startsAt} ${formatter.format(product.basePrice)}`}
-          </p>
+      <div className="grid content-start gap-7 pb-28 lg:pb-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-wahaj-gold">
+              {labels.madeToOrder}
+            </p>
+            <h1 className="mt-2 text-2xl font-bold text-concrete-900 sm:text-3xl md:text-4xl">{product.name}</h1>
+            <p className="mt-3 text-lg font-semibold text-wahaj-teal">
+              {sizes.length > 0
+                ? selectedSize
+                  ? formatter.format(selectedSize.price)
+                  : `${labels.startsAt} ${formatter.format(Math.min(...sizes.map((size) => size.price)))}`
+                : `${labels.startsAt} ${formatter.format(product.basePrice)}`}
+            </p>
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
 
         {colors.length > 0 ? (
@@ -390,7 +396,7 @@ export function ProductCustomizer({
           </p>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="hidden gap-3 sm:grid-cols-2 lg:grid">
           <Button disabled={isPending || sizeRequired || (colors.length > 0 && !selectedColorId)} onClick={() => addToCart(false)}>
             <ShoppingBag size={18} /> {labels.addToCart}
           </Button>
@@ -403,6 +409,19 @@ export function ProductCustomizer({
           </Button>
         </div>
       </div>
-    </section>
+        {/* Mobile: fixed buy bar so total + actions stay reachable. */}
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-concrete-100 bg-white/95 p-3 shadow-soft backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-3xl items-center gap-3">
+            <div className="grid min-w-0 flex-1 content-center">
+              <span className="text-xs text-concrete-500">{labels.total}</span>
+              <span className="truncate text-lg font-bold text-concrete-900">{formatter.format(total)}</span>
+            </div>
+            <Button className="flex-1" disabled={isPending || sizeRequired || (colors.length > 0 && !selectedColorId)} onClick={() => addToCart(false)}>
+              <ShoppingBag size={18} /> {labels.addToCart}
+            </Button>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

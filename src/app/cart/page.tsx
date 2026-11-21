@@ -17,8 +17,8 @@ export default async function CartPage() {
   return (
     <>
       <StorefrontHeader />
-      <main className="mx-auto max-w-7xl px-4 py-10">
-        <h1 className="text-4xl font-bold text-concrete-900">{dict.cart}</h1>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-10">
+        <h1 className="text-3xl font-bold text-concrete-900 sm:text-4xl">{dict.cart}</h1>
         {cart.items.length === 0 ? (
           <div className="mt-8 rounded-md border border-concrete-100 bg-white p-8 text-center shadow-soft">
             <p className="text-concrete-600">{dict.yourCartEmpty}</p>
@@ -34,11 +34,11 @@ export default async function CartPage() {
                   className="grid gap-4 rounded-md border border-concrete-100 bg-white p-4 shadow-soft md:grid-cols-[140px_1fr_auto]"
                   key={item.id}
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-md bg-concrete-100">
+                  <div className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-md bg-concrete-100 sm:w-full">
                     <Image alt={item.productName} className="object-cover" fill src={item.image} />
                   </div>
                   <div>
-                    <a className="text-xl font-bold text-concrete-900" href={`/products/${item.slug}`}>
+                    <a className="text-lg font-bold text-concrete-900 sm:text-xl" href={`/products/${item.slug}`}>
                       {item.productName}
                     </a>
                     <p className="mt-1 text-sm text-concrete-500">SKU {item.sku}</p>

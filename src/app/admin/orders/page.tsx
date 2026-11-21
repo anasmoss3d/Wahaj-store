@@ -46,7 +46,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         <h1 className="text-3xl font-bold text-concrete-900">Orders</h1>
         <OrdersAutoRefresh initialLatestAt={latestAt} />
       </div>
-      <form className="mt-6 grid gap-3 rounded-md border border-concrete-100 bg-white p-4 shadow-soft md:grid-cols-[1fr_220px_auto]">
+      <form className="mt-6 grid gap-3 rounded-xl border border-concrete-100 bg-white p-4 shadow-soft md:grid-cols-[1fr_220px_auto]">
         <input
           className="min-h-11 rounded-md border border-concrete-200 px-3"
           defaultValue={q}
@@ -61,11 +61,35 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             </option>
           ))}
         </select>
-        <button className="rounded-md bg-wahaj-teal px-4 font-semibold text-white" type="submit">
+        <button className="min-h-11 rounded-md bg-wahaj-teal px-4 font-semibold text-white" type="submit">
           Filter
         </button>
       </form>
-      <div className="mt-8 overflow-x-auto rounded-md border border-concrete-100 bg-white shadow-soft">
+      {/* Mobile: order cards. */}
+      <div className="mt-6 grid gap-3 md:hidden">
+        {orders.length === 0 ? (
+          <p className="rounded-xl border border-concrete-100 bg-white p-5 text-sm text-concrete-500 shadow-soft">No orders found.</p>
+        ) : (
+          orders.map((order) => (
+            <article className="rounded-xl border border-concrete-100 bg-white p-4 shadow-soft" key={order.id}>
+              <div className="flex items-center justify-between gap-3">
+                <a className="font-bold text-wahaj-teal" href={`/admin/orders/${order.id}`}>
+                  {order.orderNumber}
+                </a>
+                <StatusBadge status={order.status} />
+              </div>
+              <p className="mt-2 font-semibold text-concrete-900">{order.customerName}</p>
+              <p className="text-sm text-concrete-500" dir="ltr">{order.phone}</p>
+              <div className="mt-3 flex items-center justify-between border-t border-concrete-100 pt-3 text-sm">
+                <span className="text-concrete-500">{formatDate(order.createdAt, "en")}</span>
+                <span className="font-bold text-concrete-900">{formatMoney(order.grandTotal)}</span>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+      {/* Desktop: table. */}
+      <div className="mt-8 hidden overflow-x-auto rounded-xl border border-concrete-100 bg-white shadow-soft md:block">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-concrete-50 text-concrete-500">
             <tr>

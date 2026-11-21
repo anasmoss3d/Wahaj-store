@@ -78,6 +78,15 @@ export function cairoDayKey(date: DateInput) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+/** Next YYYY-MM-DD key (Cairo calendar day after the given key). */
+export function nextCairoDayKey(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  const month = String(next.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(next.getUTCDate()).padStart(2, "0");
+  return `${next.getUTCFullYear()}-${month}-${day}`;
+}
+
 /** WAH-YYYYMMDD prefix based on the current Cairo date. */
 export function cairoOrderDatePrefix() {
   return `WAH-${cairoDayKey(new Date()).replaceAll("-", "")}`;

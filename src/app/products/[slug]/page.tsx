@@ -113,21 +113,21 @@ export default async function ProductPage({ params }: { params: Params }) {
   return (
     <>
       <StorefrontHeader />
-      <main className="mx-auto max-w-7xl px-4 py-10">
-        <div className="mb-6 flex justify-end">
-          <WishlistButton
-            initialSaved={Boolean(wishlisted)}
-            isLoggedIn={Boolean(user)}
-            labels={{ save: dict.addToWishlist, remove: dict.removeFromWishlist, login: dict.loginToSave }}
-            productId={product.id}
-          />
-        </div>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-10">
         <ProductCustomizer
           product={{
             id: product.id,
             name: product.name,
             basePrice: Number(product.basePrice)
           }}
+          action={
+            <WishlistButton
+              initialSaved={Boolean(wishlisted)}
+              isLoggedIn={Boolean(user)}
+              labels={{ save: dict.addToWishlist, remove: dict.removeFromWishlist, login: dict.loginToSave }}
+              productId={product.id}
+            />
+          }
           colors={colorOptions}
           sizes={sizeOptions}
           addons={product.addons.map((item) => ({
