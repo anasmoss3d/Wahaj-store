@@ -1,7 +1,9 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { cairoDayEnd, cairoDayKey, cairoDayStart } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
+import { hashToken } from "@/lib/sessions";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +91,48 @@ export async function GET(request: Request) {
     })
   );
   await run("cairo", async () => ({ fromKey, toKey, today: cairoDayKey(now), money: formatMoney("123.45") }));
+
+  if (url.searchParams.get("login") === "1") {
+    const admin = await prisma.adminUser.findFirst({ where: { active: true } });
+    if (!admin) {
+      results.pages = { ok: false, error: "No active admin user" };
+    } else {
+      const token = randomBytes(32).toString("base64url");
+      const session = await prisma.adminSession.create({
+        data: {
+          tokenHash: hashToken(token),
+          adminUserId: admin.id,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+          userAgent: "diag"
+        }
+      });
+      results.diagSessionId = session.id;
+      const pages = ["/admin", "/admin/products", "/admin/orders", "/admin/categories", "/admin/colors", "/admin/settings"];
+      for (const page of pages) {
+        try {
+          const response = await fetch(new URL(page, request.url), {
+            headers: { cookie: `wahaj_admin_session=${token}` },
+            redirect: "manual",
+            cache: "no-store"
+          });
+          const body = await response.text();
+          results[`page:${page}`] = {
+            status: response.status,
+            location: response.headers.get("location"),
+            title: body.match(/<title>(.*?)<\/title>/)?.[1],
+            errorLine: body.match(/An error occurred[^<]*/)?.[0],
+            digest: body.match(/digest[^,}]*/)?.[0],
+            excerpt: body.slice(0, 400)
+          };
+        } catch (error) {
+          results[`page:${page}`] = {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+    }
+  }
 
   return NextResponse.json(results);
 }
