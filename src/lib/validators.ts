@@ -12,6 +12,13 @@ export const loginSchema = z.object({
   password: z.string().min(8).max(200)
 });
 
+// Customer sign-in accepts either an email OR an Egyptian mobile number,
+// matching how accounts are looked up in `customerLoginAction`.
+export const customerLoginSchema = z.object({
+  email: z.union([z.string().email().max(190), z.string().regex(phoneRegex)]),
+  password: z.string().min(8).max(200)
+});
+
 export const registerSchema = z.object({
   name: z.string().min(2).max(120),
   phone: z.string().regex(phoneRegex, "Enter a valid Egyptian mobile number."),
