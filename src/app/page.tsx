@@ -48,7 +48,7 @@ export default async function HomePage() {
       <main>
         <section className="relative overflow-hidden bg-concrete-900 text-white">
           <Image
-            alt="Wahaj luxury concrete decor"
+            alt="Wahaj handmade decor"
             className="object-cover opacity-70"
             fill
             priority

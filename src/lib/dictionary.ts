@@ -13,8 +13,8 @@ export function isLocale(value: string | undefined | null): value is Locale {
 export const en = {
   storeName: "Wahaj",
   storeNameFull: "وهج | Wahaj",
-  tagline: "Handmade concrete decor with premium customization",
-  brandSub: "Concrete decor",
+  tagline: "Handmade decor with premium customization",
+  brandSub: "Handmade decor",
   products: "Products",
   cart: "Cart",
   checkout: "Checkout",
@@ -25,7 +25,7 @@ export const en = {
   customization: "Customization",
   heroKicker: "Handmade in Egypt",
   heroText:
-    "Concrete pieces made by hand, finished in your color and your details. Pick, customize, and pay cash on delivery or via InstaPay.",
+    "Handmade pieces, finished in your color and your details. Pick, customize, and pay cash on delivery or via InstaPay.",
   shopProducts: "Shop products",
   seeCustomization: "See customization",
   featured: "Featured",
@@ -182,7 +182,7 @@ export const en = {
   whatsappCtaTitle: "Order via WhatsApp",
   whatsappCtaText: "Send a photo of your corner or ask about any color — we help you choose before you order.",
   footerText:
-    "Wahaj is the warmth of the handmade. Authentic Egyptian concrete, in your colors and details, to your doorstep."
+    "Wahaj is the warmth of the handmade. Authentic Egyptian craftsmanship, in your colors and details, to your doorstep."
 };
 
 export type Dictionary = typeof en;
@@ -190,10 +190,10 @@ export type Dictionary = typeof en;
 export const ar: Dictionary = {
   storeName: "وهج",
   storeNameFull: "وهج | Wahaj",
-  tagline: "ديكور كونكريت مصنوع يدويًا بتخصيصات فاخرة",
+  tagline: "ديكور مصنوع يدويًا بتخصيصات فاخرة",
   heroKicker: "صُنع يدوياً في مصر",
   heroText:
-    "قطع كونكريت مصنوعة بإيدينا، تاخد لونها من ذوقك وتفاصيلها من بيتك. اختار، خصص، واستلم طلبك وادفع كاش عند الاستلام أو بانستاباي.",
+    "قطع مصنوعة بإيدينا، تاخد لونها من ذوقك وتفاصيلها من بيتك. اختار، خصص، واستلم طلبك وادفع كاش عند الاستلام أو بانستاباي.",
   signaturePieces: "مختارات وهج",
   colorPreviewTitle: "شوف لونها الحقيقي قبل ما تطلب.",
   whyBody:
@@ -213,7 +213,7 @@ export const ar: Dictionary = {
   step3Title: "ادفع بالطريقة اللي تريحك",
   step3Text: "أكد طلبك كاش عند الاستلام أو بتحويل انستاباي، وهنكلمك قبل الشحن.",
   saidAboutWahaj: "قالوا عن وهج",
-  brandSub: "ديكور كونكريت",
+  brandSub: "ديكور يدوي",
   products: "المنتجات",
   cart: "السلة",
   checkout: "إتمام الطلب",
@@ -302,7 +302,7 @@ export const ar: Dictionary = {
   reviewPending: "شكرًا! سيظهر تقييمك بعد المراجعة.",
   noReviews: "لا توجد تقييمات بعد. كن أول من يقيّم هذه القطعة.",
   basedOn: "بناءً على",
-  footerText: "وهج يعني الدفا اللي بيطلع من الحاجة المصنوعة بإيد. كونكريت مصري أصيل، بألوانك ولمساتك، لحد باب البيت.",
+  footerText: "وهج يعني الدفا اللي بيطلع من الحاجة المصنوعة بإيد. صناعة مصرية أصيلة، بألوانك ولمساتك، لحد باب البيت.",
   orderTracking: "تتبع الطلب",
   whatsapp: "واتساب",
   instagram: "انستجرام",

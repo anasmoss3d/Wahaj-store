@@ -23,18 +23,18 @@ const cairo = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Wahaj | Handmade Concrete Decor",
+    default: "Wahaj | Handmade Decor",
     template: "%s | Wahaj"
   },
-  description: "Premium handmade concrete decor with configurable colors and add-ons.",
+  description: "Premium handmade decor with configurable colors and add-ons.",
   metadataBase: new URL(process.env.APP_URL || "http://localhost:3000"),
   icons: {
     icon: "/brand/wahaj-logo.jpg",
     apple: "/brand/wahaj-logo.jpg"
   },
   openGraph: {
-    title: "Wahaj | Handmade Concrete Decor",
-    description: "Premium handmade concrete decor with configurable colors and add-ons.",
+    title: "Wahaj | Handmade Decor",
+    description: "Premium handmade decor with configurable colors and add-ons.",
     siteName: "Wahaj"
   }
 };
