@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ArrowRight, CheckCircle2, MessageCircle, Paintbrush, PackageCheck, Sparkles, Truck } from "lucide-react";
+import { ArrowRight, CheckCircle2, MessageCircle, Paintbrush, PackageCheck, Sparkles, Wallet } from "lucide-react";
 import { StorefrontFooter } from "@/components/storefront/footer";
 import { StorefrontHeader } from "@/components/storefront/header";
 import { ProductCard } from "@/components/storefront/product-card";
@@ -19,7 +19,7 @@ export default async function HomePage() {
       take: 4
     }),
     prisma.category.findMany({
-      where: { active: true },
+      where: { active: true, products: { some: { active: true } } },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       take: 6
     }),
@@ -125,7 +125,7 @@ export default async function HomePage() {
               { icon: Paintbrush, title: dict.chooseColor, text: dict.featColorText },
               { icon: Sparkles, title: dict.addExtras, text: dict.featDetailText },
               { icon: PackageCheck, title: dict.reviewOrder, text: dict.featKeptText },
-              { icon: Truck, title: dict.cashOnDelivery, text: dict.featCodText }
+              { icon: Wallet, title: dict.featPayTitle, text: dict.featPayText }
             ].map((item) => {
               const Icon = item.icon;
               return (

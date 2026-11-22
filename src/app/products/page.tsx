@@ -149,7 +149,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
 
   const [products, categories, colors, dict] = await Promise.all([
     prisma.product.findMany({ where, orderBy, take: 24 }),
-    prisma.category.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
+    prisma.category.findMany({
+      where: { active: true, products: { some: { active: true } } },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
+    }),
     prisma.color.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     getDictionary()
   ]);
