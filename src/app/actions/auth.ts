@@ -11,7 +11,7 @@ import {
   verifyPassword
 } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { loginSchema, registerSchema } from "@/lib/validators";
+import { customerLoginSchema, loginSchema, registerSchema } from "@/lib/validators";
 import { assertSameOrigin, rateLimit, requestMetadata } from "@/lib/security";
 import { writeAuditLog } from "@/lib/audit";
 import { safeNextPath } from "@/lib/utils";
@@ -74,7 +74,7 @@ export async function customerLoginAction(
     await assertSameOrigin();
     const meta = await requestMetadata();
     rateLimit(`customer-login:${meta.ip ?? "unknown"}`, 10, 60_000);
-    const parsed = loginSchema.parse({
+    const parsed = customerLoginSchema.parse({
       email: formValue(formData, "email"),
       password: formValue(formData, "password")
     });
