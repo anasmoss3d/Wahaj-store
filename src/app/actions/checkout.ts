@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 import { createOrderFromCart } from "@/lib/orders";
 import { safeErrorMessage } from "@/lib/errors";
 import { assertSameOrigin } from "@/lib/security";
@@ -27,6 +28,11 @@ export async function checkoutAction(
     locale === "ar"
       ? "حدث خطأ أثناء تأكيد الطلب. حاول مرة أخرى."
       : "Something went wrong while placing your order. Please try again.";
+
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/auth/login?next=%2Fcheckout");
+  }
 
   try {
     await assertSameOrigin();

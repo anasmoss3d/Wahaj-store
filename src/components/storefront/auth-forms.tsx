@@ -10,10 +10,11 @@ import { Field, Input } from "@/components/ui/input";
 import { FormMessage, SubmitButton } from "@/components/ui/form-message";
 import type { Dictionary } from "@/lib/i18n";
 
-export function CustomerLoginForm({ labels }: { labels: Dictionary }) {
+export function CustomerLoginForm({ labels, next }: { labels: Dictionary; next?: string }) {
   const [state, action] = useActionState(customerLoginAction, {});
   return (
     <form action={action} className="grid gap-4">
+      {next ? <input name="next" type="hidden" value={next} /> : null}
       <FormMessage error={state.error} success={state.success} />
       <Field label={labels.emailOrPhone}>
         <Input name="email" required />
@@ -26,10 +27,11 @@ export function CustomerLoginForm({ labels }: { labels: Dictionary }) {
   );
 }
 
-export function CustomerRegisterForm({ labels }: { labels: Dictionary }) {
+export function CustomerRegisterForm({ labels, next }: { labels: Dictionary; next?: string }) {
   const [state, action] = useActionState(customerRegisterAction, {});
   return (
     <form action={action} className="grid gap-4">
+      {next ? <input name="next" type="hidden" value={next} /> : null}
       <FormMessage error={state.error} success={state.success} />
       <Field label={labels.name}>
         <Input name="name" required />

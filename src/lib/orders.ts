@@ -42,10 +42,13 @@ export async function createOrderFromCart(input: {
   paymentReceiptUrl?: string | null;
 }) {
   const user = await getCurrentUser();
+  if (!user) {
+    throw new AppError("Please sign in or create an account to place your order.");
+  }
   const cartSessionId = await readCookie(CART_COOKIE);
   const trackingToken = createTrackingToken();
 
-  if (!user && !cartSessionId) {
+  if (!cartSessionId) {
     throw new AppError("Your cart is empty.");
   }
 
@@ -54,9 +57,7 @@ export async function createOrderFromCart(input: {
     throw new AppError("Payment receipt is required for InstaPay orders.");
   }
 
-  const cartOwnershipWhere = user
-    ? [{ userId: user.id }, ...(cartSessionId ? [{ sessionId: cartSessionId }] : [])]
-    : [{ sessionId: cartSessionId! }];
+  const cartOwnershipWhere = [{ userId: user.id }, { sessionId: cartSessionId }];
 
   // All slow reads and price calculations happen OUTSIDE the write transaction:
   // on serverless + pooled Postgres every query costs latency, and the default
@@ -148,7 +149,7 @@ export async function createOrderFromCart(input: {
       const order = await tx.order.create({
         data: {
           orderNumber,
-          userId: user?.id ?? null,
+          userId: user.id,
           customerName: input.customerName,
           phone: input.phone,
           whatsapp: input.whatsapp || null,

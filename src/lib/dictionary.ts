@@ -135,6 +135,8 @@ export const en = {
   signIn: "Sign in",
   signInHint: "Sign in to view profile, saved addresses, and orders.",
   customerLogin: "Customer login",
+  checkoutLoginNotice:
+    "Sign in or create an account to complete your order and track it from your account.",
   emailOrPhone: "Email or phone",
   password: "Password",
   name: "Name",
@@ -331,6 +333,8 @@ export const ar: Dictionary = {
   signIn: "تسجيل الدخول",
   signInHint: "سجل الدخول لعرض بياناتك وعناوينك وطلباتك.",
   customerLogin: "دخول العملاء",
+  checkoutLoginNotice:
+    "سجل الدخول أو أنشئ حساب عشان تكمل طلبك وتقدر تتابعه من حسابك.",
   emailOrPhone: "الإيميل أو الهاتف",
   password: "كلمة المرور",
   name: "الاسم",

@@ -1,9 +1,11 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/storefront/checkout-form";
 import { CouponForm } from "@/components/storefront/coupon-form";
 import { StorefrontFooter } from "@/components/storefront/footer";
 import { StorefrontHeader } from "@/components/storefront/header";
 import { ButtonLink } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth";
 import { getCartView } from "@/lib/cart";
 import { GOVERNORATES } from "@/lib/governorates";
 import { getDictionary } from "@/lib/i18n";
@@ -15,12 +17,17 @@ import { getActiveShippingRates } from "@/lib/shipping";
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
-  const [cart, settings, rates, dict] = await Promise.all([
+  const [cart, settings, rates, dict, user] = await Promise.all([
     getCartView(),
     getStoreSettings(),
     getActiveShippingRates(),
-    getDictionary()
+    getDictionary(),
+    getCurrentUser()
   ]);
+
+  if (!user && cart.items.length > 0) {
+    redirect("/auth/login?next=%2Fcheckout");
+  }
 
   return (
     <>
@@ -38,6 +45,11 @@ export default async function CheckoutPage() {
           <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_420px]">
             <div className="grid content-start gap-6">
               <CheckoutForm
+                defaults={
+                  user
+                    ? { name: user.name, phone: user.phone, email: user.email ?? "" }
+                    : undefined
+                }
                 discountCents={cart.discountCents}
                 flatRate={settings.shippingFlatRate}
                 governorates={[...GOVERNORATES]}

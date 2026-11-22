@@ -18,7 +18,8 @@ export function CheckoutForm({
   subtotalCents,
   discountCents,
   hasCustomColor,
-  instapay
+  instapay,
+  defaults
 }: {
   labels: Dictionary;
   governorates: string[];
@@ -29,6 +30,7 @@ export function CheckoutForm({
   discountCents: number;
   hasCustomColor: boolean;
   instapay: { handle: string; qrImage: string; link: string };
+  defaults?: { name: string; phone: string; email: string };
 }) {
   const [state, action] = useActionState(checkoutAction, {});
   const [governorate, setGovernorate] = useState("");
@@ -64,16 +66,16 @@ export function CheckoutForm({
         <FormMessage error={state.error} success={state.success} />
         <div className="grid gap-4 md:grid-cols-2">
           <Field label={labels.customerName}>
-            <Input name="customerName" required />
+            <Input defaultValue={defaults?.name} name="customerName" required />
           </Field>
           <Field label={labels.phoneNumber}>
-            <Input name="phone" placeholder="010..." required />
+            <Input defaultValue={defaults?.phone} name="phone" placeholder="010..." required />
           </Field>
           <Field label={`${labels.whatsappNumber} (${labels.optional})`}>
             <Input name="whatsapp" placeholder={labels.optional} />
           </Field>
           <Field label={`${labels.email} (${labels.optional})`}>
-            <Input name="email" placeholder={labels.optional} type="email" />
+            <Input defaultValue={defaults?.email} name="email" placeholder={labels.optional} type="email" />
           </Field>
           <Field label={labels.governorate}>
             <select

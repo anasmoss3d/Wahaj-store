@@ -67,6 +67,20 @@ export function compact<T>(items: Array<T | null | undefined>) {
   return items.filter(Boolean) as T[];
 }
 
+/** Only allow same-site paths for post-login redirects (blocks open redirects). */
+export function safeNextPath(value: string | null | undefined, fallback = "/account") {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    value.length > 512
+  ) {
+    return fallback;
+  }
+  return value;
+}
+
 export function absoluteUrl(path = "") {
   const appUrl = process.env.APP_URL || "http://localhost:3000";
   try {

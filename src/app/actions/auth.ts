@@ -14,6 +14,7 @@ import { prisma } from "@/lib/db";
 import { loginSchema, registerSchema } from "@/lib/validators";
 import { assertSameOrigin, rateLimit, requestMetadata } from "@/lib/security";
 import { writeAuditLog } from "@/lib/audit";
+import { safeNextPath } from "@/lib/utils";
 
 export type ActionState = {
   error?: string;
@@ -62,7 +63,7 @@ export async function customerRegisterAction(
     };
   }
 
-  redirect("/account");
+  redirect(safeNextPath(formValue(formData, "next")));
 }
 
 export async function customerLoginAction(
@@ -91,7 +92,7 @@ export async function customerLoginAction(
     return { error: "Could not sign in. Please try again." };
   }
 
-  redirect("/account");
+  redirect(safeNextPath(formValue(formData, "next")));
 }
 
 export async function adminLoginAction(
