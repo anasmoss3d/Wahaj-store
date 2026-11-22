@@ -98,7 +98,9 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
     .filter((order) => order.status !== "CANCELLED")
     .reduce((sum, order) => sum + toCents(order.grandTotal), 0);
   const rangeOrders = ordersInRange.filter((order) => order.status !== "CANCELLED").length;
-  const averageOrderValue = rangeOrders > 0 ? rangeRevenueCents / rangeOrders / 100 : 0;
+  // Keep AOV in whole cents; dividing EGP by a non-zero order count yields
+  // long decimals that formatMoney/toCents rejects.
+  const averageOrderCents = rangeOrders > 0 ? Math.round(rangeRevenueCents / rangeOrders) : 0;
 
   const days: Array<{ key: string; label: string; cents: number }> = [];
   let cursorKey = fromKey;
@@ -171,7 +173,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
           <h2 className="text-xl font-bold text-concrete-900">Sales in range</h2>
           <p className="mt-1 text-sm text-concrete-500">
             {formatMoney(String(rangeRevenueCents / 100))} · {rangeOrders} orders · AOV{" "}
-            {formatMoney(String(averageOrderValue))}
+            {formatMoney(String(averageOrderCents / 100))}
           </p>
           <div className="mt-5 flex h-40 items-end gap-1 overflow-hidden">
             {days.map((day) => (

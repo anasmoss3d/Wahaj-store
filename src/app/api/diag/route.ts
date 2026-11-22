@@ -92,6 +92,13 @@ export async function GET(request: Request) {
   );
   await run("cairo", async () => ({ fromKey, toKey, today: cairoDayKey(now), money: formatMoney("123.45") }));
 
+  if (url.searchParams.get("cleanup") === "1") {
+    await run("cleanup", async () => {
+      const deleted = await prisma.adminSession.deleteMany({ where: { userAgent: "diag" } });
+      return { deleted: deleted.count };
+    });
+  }
+
   if (url.searchParams.get("login") === "1") {
     const admin = await prisma.adminUser.findFirst({ where: { active: true } });
     if (!admin) {
