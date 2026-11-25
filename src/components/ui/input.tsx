@@ -11,10 +11,10 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-medium text-concrete-800">
-      <span>{label}</span>
+    <label className="grid min-w-0 content-start gap-2 text-sm font-medium text-[#1C1917]">
+      <span className="leading-snug">{label}</span>
       {children}
-      {hint ? <span className="text-xs font-normal text-concrete-500">{hint}</span> : null}
+      {hint ? <span className="text-xs font-light text-[#78716C]">{hint}</span> : null}
     </label>
   );
 }
@@ -23,7 +23,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "min-h-11 rounded-md border border-concrete-200 bg-white px-3 text-sm text-concrete-900 outline-none transition placeholder:text-concrete-400 focus:border-wahaj-teal focus:ring-2 focus:ring-wahaj-teal/15",
+        "min-h-11 w-full min-w-0 rounded-xl border border-[#DED7CB] bg-white px-4 text-sm text-[#1C1917] outline-none transition-all placeholder:text-[#A8A29E] focus:border-[#B85A2D] focus:ring-2 focus:ring-[#B85A2D]/20",
         className
       )}
       {...props}
@@ -35,7 +35,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return (
     <textarea
       className={cn(
-        "min-h-28 rounded-md border border-concrete-200 bg-white px-3 py-3 text-sm text-concrete-900 outline-none transition placeholder:text-concrete-400 focus:border-wahaj-teal focus:ring-2 focus:ring-wahaj-teal/15",
+        "min-h-28 w-full min-w-0 rounded-xl border border-[#DED7CB] bg-white px-4 py-3 text-sm text-[#1C1917] outline-none transition-all placeholder:text-[#A8A29E] focus:border-[#B85A2D] focus:ring-2 focus:ring-[#B85A2D]/20",
         className
       )}
       {...props}

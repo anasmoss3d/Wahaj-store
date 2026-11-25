@@ -10,8 +10,10 @@ export function FormMessage({ error, success }: { error?: string; success?: stri
   return (
     <p
       className={cn(
-        "rounded-md px-3 py-2 text-sm",
-        error ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+        "rounded-xl border px-4 py-2.5 text-sm",
+        error
+          ? "border-red-200 bg-red-50/90 text-red-800"
+          : "border-[#CBD5C8] bg-[#E7ECE5]/80 text-[#2F463B]"
       )}
     >
       {error || success}

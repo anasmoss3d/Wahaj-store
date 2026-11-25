@@ -4,8 +4,16 @@
 
 :root {
   color-scheme: light;
-  background: #fbfaf6;
-  color: #191614;
+  background: #f7f4ee;
+  color: #1c1917;
+  --sidebar: #faf8f5;
+  --sidebar-foreground: #1c1917;
+  --sidebar-primary: #b85a2d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f2ece4;
+  --sidebar-accent-foreground: #1c1917;
+  --sidebar-border: #e8e2d8;
+  --sidebar-ring: #b85a2d;
 }
 
 * {
@@ -13,14 +21,14 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  background-color: #f7f4ee;
 }
 
 body {
   margin: 0;
-  background:
-    linear-gradient(180deg, rgba(247, 245, 240, 0.92), rgba(251, 250, 246, 1) 420px),
-    #fbfaf6;
+  background-color: #f7f4ee;
+  color: #1c1917;
+  overflow-x: clip;
 }
 
 a {
@@ -35,8 +43,9 @@ select {
   font: inherit;
 }
 
-/* Real Arabic typography: Arabic script must never be letter-spaced or
-   uppercased — both break letter connections and look "mirrored". */
+/* Arabic typography rules:
+   - Arabic script must NEVER be letter-spaced or negatively tracked (it breaks cursive connections).
+   - Arabic text must NEVER be uppercase or italic. */
 html[lang="ar"] [class*="tracking-"] {
   letter-spacing: 0 !important;
 }
@@ -45,12 +54,129 @@ html[lang="ar"] .uppercase {
   text-transform: none;
 }
 
-/* Arabic headings feel tighter without Latin-style loose leading. */
+html[lang="ar"] em,
+html[lang="ar"] i,
+html[lang="ar"] .italic,
+em,
+i,
+.italic {
+  font-style: normal !important;
+}
+
+/* Primary Arabic fonts using local Thmanyah */
 html[lang="ar"] body {
-  line-height: 1.9;
-  font-family: var(--font-arabic), "Segoe UI", Tahoma, Arial, sans-serif;
+  line-height: 1.85;
+  font-family: var(--font-thmanyah-sans), "Thmanyah Sans", "Cairo", "Segoe UI", Tahoma, Arial, sans-serif;
+  letter-spacing: 0 !important;
 }
 
 html[lang="en"] body {
-  font-family: var(--font-latin), "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-latin), "Geist", "Segoe UI", Arial, sans-serif;
+}
+
+.font-editorial {
+  font-family: var(--font-serif), var(--font-amiri), "Cormorant Garamond", "Amiri", Georgia, serif;
+}
+
+html[lang="ar"] .font-editorial,
+html[lang="ar"] h1,
+html[lang="ar"] h2,
+html[lang="ar"] h3,
+html[lang="ar"] .font-thmanyah-extend,
+html[lang="ar"] .font-thmanyah-display {
+  font-family: var(--font-thmanyah-serif), "Thmanyah Serif Display", "Thmanyah Sans", serif;
+  font-feature-settings: "swsh" 1, "calt" 1, "dlig" 1;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  line-height: 1.28 !important;
+  letter-spacing: 0 !important;
+}
+
+html[lang="ar"] h1,
+html[lang="ar"] h2 {
+  font-weight: 900;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .warm-stone-border {
+    border-color: #e8e2d8;
+  }
+}
+
+@keyframes wahajLineRise {
+  0% {
+    opacity: 0;
+    transform: translateY(105%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wahajFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wahajFlameBreath {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1) rotate(-1deg);
+  }
+  50% {
+    transform: scaleY(1.07) scaleX(0.95) rotate(1.5deg);
+  }
+}
+
+.animate-wahaj-flame {
+  transform-origin: center bottom;
+  animation: wahajFlameBreath 3.2s ease-in-out infinite;
+}
+
+.animate-wahaj-line {
+  animation: wahajLineRise 850ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-wahaj-fade-up {
+  animation: wahajFadeUp 750ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.svg-draw-icon svg * {
+  stroke-dasharray: 70;
+  stroke-dashoffset: 70;
+  transition: stroke-dashoffset 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--draw-delay, 0ms);
+}
+
+.svg-draw-icon.is-drawn svg * {
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-wahaj-line,
+  .animate-wahaj-fade-up,
+  .animate-wahaj-flame {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .svg-draw-icon svg * {
+    stroke-dashoffset: 0 !important;
+    transition: none !important;
+  }
 }

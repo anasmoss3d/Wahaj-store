@@ -38,36 +38,36 @@ export function CartLineControls({
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="inline-flex h-10 items-center rounded-md border border-concrete-200">
+    <div className="flex items-center gap-2.5">
+      <div className="inline-flex h-10 items-center rounded-full border border-[#DED7CB] bg-[#FAF8F5] p-0.5">
         <button
           aria-label={labels.decrease}
-          className="grid h-10 w-10 place-items-center disabled:opacity-50"
+          className="grid h-9 w-9 place-items-center rounded-full text-[#1C1917] transition hover:bg-[#EDE7DD] disabled:opacity-50"
           disabled={pending}
           onClick={() => update(current - 1)}
           type="button"
         >
-          <Minus size={16} />
+          <Minus size={15} />
         </button>
-        <span className="w-10 text-center text-sm font-semibold">{current}</span>
+        <span className="w-9 text-center text-sm font-semibold text-[#1C1917]">{current}</span>
         <button
           aria-label={labels.increase}
-          className="grid h-10 w-10 place-items-center disabled:opacity-50"
+          className="grid h-9 w-9 place-items-center rounded-full text-[#1C1917] transition hover:bg-[#EDE7DD] disabled:opacity-50"
           disabled={pending}
           onClick={() => update(current + 1)}
           type="button"
         >
-          <Plus size={16} />
+          <Plus size={15} />
         </button>
       </div>
       <button
         aria-label={labels.remove}
-        className="grid h-10 w-10 place-items-center rounded-md text-red-600 hover:bg-red-50"
+        className="grid h-10 w-10 place-items-center rounded-full border border-transparent text-[#8C827A] transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
         disabled={pending}
         onClick={remove}
         type="button"
       >
-        <Trash2 size={18} />
+        <Trash2 size={17} />
       </button>
     </div>
   );

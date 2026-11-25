@@ -6,12 +6,10 @@ New-Item -ItemType Directory -Force -Path $fontsDir | Out-Null
 $ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 $headers = @{ "User-Agent" = $ua; "Accept" = "text/css,*/*;q=0.1" }
 
-function Get-FontFiles([string]$fam, [string]$weightSpec, [string[]]$subsets) {
+function Get-FontFiles([string]$fam, [string]$filePrefix, [string]$weightSpec, [string[]]$subsets) {
   $url = "https://fonts.googleapis.com/css2?family=$fam$weightSpec&display=swap"
   $css = (Invoke-WebRequest -Uri $url -Headers $headers -UseBasicParsing).Content
-  # CSS is chunked by "/* subset */" comments
   $chunks = [regex]::Split($css, "/\* ([\w-]+) \*/")
-  # pairs: name, cssBlock
   $files = @()
   for ($i = 1; $i -lt $chunks.Count; $i += 2) {
     $name = $chunks[$i].Trim()
@@ -19,7 +17,7 @@ function Get-FontFiles([string]$fam, [string]$weightSpec, [string[]]$subsets) {
     if ($subsets -contains $name) {
       if ($block -notmatch 'src:\s*url\((https://[^)]+)\)') { throw "no url in block $name" }
       $furl = $Matches[1]
-      $fname = "$fam-$name.woff2"
+      $fname = "$filePrefix-$name.woff2"
       $fpath = Join-Path $fontsDir $fname
       Invoke-WebRequest -Uri $furl -Headers $headers -UseBasicParsing -OutFile $fpath
       $bytes = [IO.File]::ReadAllBytes($fpath)
@@ -31,11 +29,14 @@ function Get-FontFiles([string]$fam, [string]$weightSpec, [string[]]$subsets) {
   return $files
 }
 
-$cairo = Get-FontFiles "Cairo" ":wght@200..1000" @("arabic", "latin")
-$inter = Get-FontFiles "Inter" ":wght@100..900" @("latin", "latin-ext")
+$cairo = Get-FontFiles "Cairo" "Cairo" ":wght@200..1000" @("arabic", "latin")
+$geist = Get-FontFiles "Geist" "Geist" ":wght@100..900" @("latin", "latin-ext")
+$geistMono = Get-FontFiles "Geist+Mono" "GeistMono" ":wght@100..900" @("latin", "latin-ext")
 
 Write-Host "Cairo files:"
 $cairo | ForEach-Object { Write-Host ("  " + $_.file + " (" + $_.subset + ") " + $_.bytes + " bytes") }
-Write-Host "Inter files:"
-$inter | ForEach-Object { Write-Host ("  " + $_.file + " (" + $_.subset + ") " + $_.bytes + " bytes") }
+Write-Host "Geist files:"
+$geist | ForEach-Object { Write-Host ("  " + $_.file + " (" + $_.subset + ") " + $_.bytes + " bytes") }
+Write-Host "Geist Mono files:"
+$geistMono | ForEach-Object { Write-Host ("  " + $_.file + " (" + $_.subset + ") " + $_.bytes + " bytes") }
 Write-Host "DONE"
