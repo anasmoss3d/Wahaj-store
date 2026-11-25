@@ -5,7 +5,11 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingBag, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { isCustomColorName } from "@/lib/dictionary";
+import type { Locale } from "@/lib/i18n";
+import { formatMoney } from "@/lib/money";
 
 type ProductOption = {
   id: string;
@@ -19,6 +23,7 @@ type ColorOption = {
   hexCode: string;
   additionalPrice: number;
   imageUrl: string;
+  isCustomColor?: boolean;
 };
 
 type AddonOption = {
@@ -40,12 +45,6 @@ type GalleryImage = {
   alt: string;
 };
 
-const formatter = new Intl.NumberFormat("en-EG", {
-  style: "currency",
-  currency: "EGP",
-  maximumFractionDigits: 0
-});
-
 export function ProductCustomizer({
   product,
   colors,
@@ -53,7 +52,8 @@ export function ProductCustomizer({
   addons,
   images,
   labels,
-  action
+  action,
+  locale = "en"
 }: {
   product: ProductOption;
   colors: ColorOption[];
@@ -61,6 +61,7 @@ export function ProductCustomizer({
   addons: AddonOption[];
   images: GalleryImage[];
   action?: React.ReactNode;
+  locale?: Locale;
   labels: {
     madeToOrder: string;
     startsAt: string;
@@ -87,6 +88,7 @@ export function ProductCustomizer({
   const [selectedSizeId, setSelectedSizeId] = useState("");
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -130,6 +132,10 @@ export function ProductCustomizer({
     setSelectedImageUrl(galleryImages[nextIndex].url);
   }
 
+  function formatPrice(value: number) {
+    return formatMoney(value.toFixed(2), "EGP", locale);
+  }
+
   function addToCart(goToCheckout = false) {
     setMessage("");
     setIsSuccess(false);
@@ -163,8 +169,19 @@ export function ProductCustomizer({
   return (
     <>
     <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="grid content-start gap-3">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-md bg-concrete-100">
+      <div className="grid content-start gap-3.5">
+        <div
+          className="relative aspect-[4/5] overflow-hidden rounded-2xl sm:rounded-3xl bg-[#EDE7DD] select-none touch-pan-y shadow-sm"
+          onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            if (touchStartX === null) return;
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 40) {
+              moveGallery(diff > 0 ? 1 : -1);
+            }
+            setTouchStartX(null);
+          }}
+        >
           {activeImage ? (
             <Image
               alt={activeImage.alt}
@@ -179,23 +196,23 @@ export function ProductCustomizer({
             <>
               <button
                 aria-label={labels.previousImage}
-                className="absolute start-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-concrete-900 shadow-soft transition hover:bg-white"
+                className="absolute start-3.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-[#E5DDD0] bg-white/90 text-[#1C1917] shadow-sm transition-all hover:bg-white hover:border-[#B85A2D]"
                 onClick={() => moveGallery(-1)}
                 type="button"
               >
-                <ChevronLeft className="rtl:rotate-180" size={22} />
+                <ChevronLeft className="rtl:rotate-180" size={20} />
               </button>
               <button
                 aria-label={labels.nextImage}
-                className="absolute end-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-concrete-900 shadow-soft transition hover:bg-white"
+                className="absolute end-3.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-[#E5DDD0] bg-white/90 text-[#1C1917] shadow-sm transition-all hover:bg-white hover:border-[#B85A2D]"
                 onClick={() => moveGallery(1)}
                 type="button"
               >
-                <ChevronRight className="rtl:rotate-180" size={22} />
+                <ChevronRight className="rtl:rotate-180" size={20} />
               </button>
               <span
                 aria-live="polite"
-                className="absolute bottom-3 end-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-concrete-800"
+                className="absolute bottom-3.5 end-3.5 rounded-full border border-[#E5DDD0] bg-white/90 px-3.5 py-1 text-xs font-medium text-[#1C1917] backdrop-blur-sm"
               >
                 {activeImageIndex + 1} / {galleryImages.length}
               </span>
@@ -205,7 +222,7 @@ export function ProductCustomizer({
         {galleryImages.length > 1 ? (
           <div
             aria-label={labels.productPhotos}
-            className="flex gap-2 overflow-x-auto pb-1"
+            className="flex gap-2.5 overflow-x-auto pb-1"
             role="group"
           >
             {galleryImages.map((image, index) => (
@@ -213,10 +230,10 @@ export function ProductCustomizer({
                 aria-label={`${labels.viewImage} ${index + 1}: ${image.alt}`}
                 aria-pressed={image.url === activeImage?.url}
                 className={cn(
-                  "relative h-20 w-16 shrink-0 overflow-hidden rounded border-2 transition",
+                  "relative h-20 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-[#EDE7DD] transition-all",
                   image.url === activeImage?.url
-                    ? "border-wahaj-teal"
-                    : "border-transparent hover:border-concrete-300"
+                    ? "border-[#B85A2D] shadow-sm"
+                    : "border-transparent hover:border-[#DED7CB]"
                 )}
                 key={image.url}
                 onClick={() => setSelectedImageUrl(image.url)}
@@ -231,16 +248,16 @@ export function ProductCustomizer({
       <div className="grid content-start gap-7 pb-28 lg:pb-0">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-wahaj-gold">
+            <Badge variant="gold" className="text-xs font-medium px-3 py-1">
               {labels.madeToOrder}
-            </p>
-            <h1 className="mt-2 text-2xl font-bold text-concrete-900 sm:text-3xl md:text-4xl">{product.name}</h1>
-            <p className="mt-3 text-lg font-semibold text-wahaj-teal">
+            </Badge>
+            <h1 className="mt-3 font-editorial text-3xl font-black text-[#1C1917] sm:text-4xl lg:text-5xl">{product.name}</h1>
+            <p className="mt-3 font-editorial text-xl font-bold text-[#B85A2D]">
               {sizes.length > 0
                 ? selectedSize
-                  ? formatter.format(selectedSize.price)
-                  : `${labels.startsAt} ${formatter.format(Math.min(...sizes.map((size) => size.price)))}`
-                : `${labels.startsAt} ${formatter.format(product.basePrice)}`}
+                  ? formatPrice(selectedSize.price)
+                  : `${labels.startsAt} ${formatPrice(Math.min(...sizes.map((size) => size.price)))}`
+                : `${labels.startsAt} ${formatPrice(product.basePrice)}`}
             </p>
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -249,10 +266,10 @@ export function ProductCustomizer({
         {colors.length > 0 ? (
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-concrete-900">{labels.chooseColor}</h2>
+              <h2 className="font-editorial text-lg font-bold text-[#1C1917]">{labels.chooseColor}</h2>
               {selectedColor?.additionalPrice ? (
-                <span className="text-sm text-concrete-500">
-                  +{formatter.format(selectedColor.additionalPrice)}
+                <span className="text-xs font-medium text-[#78716C]">
+                  +{formatPrice(selectedColor.additionalPrice)}
                 </span>
               ) : null}
             </div>
@@ -260,10 +277,10 @@ export function ProductCustomizer({
               {colors.map((color) => (
                 <button
                   className={cn(
-                    "flex min-h-14 items-center gap-3 rounded-md border px-3 text-start text-sm transition",
+                    "flex min-h-14 items-center gap-3 rounded-2xl border px-3.5 text-start text-sm transition-all",
                     selectedColorId === color.id
-                      ? "border-wahaj-teal bg-wahaj-teal/5"
-                      : "border-concrete-200 bg-white"
+                      ? "border-[#B85A2D] bg-[#FAF8F5] shadow-sm"
+                      : "border-[#DED7CB] bg-white hover:border-[#B85A2D]/50"
                   )}
                   key={color.id}
                   onClick={() => {
@@ -273,21 +290,21 @@ export function ProductCustomizer({
                   type="button"
                 >
                   <span
-                    className="h-6 w-6 rounded-full border border-concrete-200"
+                    className="h-6 w-6 shrink-0 rounded-full border border-[#DED7CB]"
                     style={{ background: color.hexCode }}
                   />
-                  <span className="grid">
-                    <span className="font-semibold">{color.name}</span>
-                    <span className="text-xs text-concrete-500">
-                      {color.additionalPrice ? `+${formatter.format(color.additionalPrice)}` : labels.included}
+                  <span className="grid min-w-0">
+                    <span className="font-semibold text-[#1C1917] truncate">{color.name}</span>
+                    <span className="text-xs text-[#78716C] font-light">
+                      {color.additionalPrice ? `+${formatPrice(color.additionalPrice)}` : labels.included}
                     </span>
                   </span>
                 </button>
               ))}
             </div>
-            {selectedColor?.name.trim().toLowerCase() === "custom color" ? (
+            {selectedColor && (selectedColor.isCustomColor || isCustomColorName(selectedColor.name)) ? (
               <p
-                className="rounded-md border border-wahaj-gold/30 bg-wahaj-gold/10 px-4 py-3 text-sm leading-7 text-concrete-700"
+                className="rounded-2xl border border-[#E5DDD0] bg-[#F2ECE4]/75 px-4 py-3 text-sm leading-relaxed text-[#665E57]"
                 role="note"
               >
                 {labels.customColorHint}
@@ -298,23 +315,23 @@ export function ProductCustomizer({
 
         {sizes.length > 0 ? (
           <div className="grid gap-3">
-            <h2 className="font-semibold text-concrete-900">{labels.chooseSize}</h2>
+            <h2 className="font-editorial text-lg font-bold text-[#1C1917]">{labels.chooseSize}</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {sizes.map((size) => (
                 <button
                   className={cn(
-                    "flex min-h-14 flex-col items-start justify-center rounded-md border px-3 text-start text-sm transition",
+                    "flex min-h-14 flex-col items-start justify-center rounded-2xl border px-4 text-start text-sm transition-all",
                     selectedSizeId === size.id
-                      ? "border-wahaj-teal bg-wahaj-teal/5"
-                      : "border-concrete-200 bg-white"
+                      ? "border-[#B85A2D] bg-[#FAF8F5] shadow-sm"
+                      : "border-[#DED7CB] bg-white hover:border-[#B85A2D]/50"
                   )}
                   key={size.id}
                   onClick={() => setSelectedSizeId(size.id)}
                   type="button"
                 >
-                  <span className="font-semibold text-concrete-900">{size.name}</span>
-                  <span className="text-xs font-semibold text-wahaj-teal">
-                    {formatter.format(size.price)}
+                  <span className="font-semibold text-[#1C1917]">{size.name}</span>
+                  <span className="text-xs font-semibold text-[#B85A2D]">
+                    {formatPrice(size.price)}
                   </span>
                 </button>
               ))}
@@ -324,72 +341,74 @@ export function ProductCustomizer({
 
         {addons.length > 0 ? (
           <div className="grid gap-3">
-          <h2 className="font-semibold text-concrete-900">{labels.addExtras}</h2>
-          <div className="grid gap-3">
-            {addons.map((addon) => (
-              <label
-                className={cn(
-                  "flex cursor-pointer items-center justify-between gap-4 rounded-md border px-4 py-3",
-                  selectedAddonIds.includes(addon.id)
-                    ? "border-wahaj-gold bg-wahaj-gold/10"
-                    : "border-concrete-200 bg-white"
-                )}
-                key={addon.id}
-              >
-                <span>
-                  <span className="block font-semibold text-concrete-900">{addon.name}</span>
-                  {addon.description ? (
-                    <span className="text-sm text-concrete-500">{addon.description}</span>
-                  ) : null}
-                </span>
-                <span className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-wahaj-teal">
-                    +{formatter.format(addon.price)}
+            <h2 className="font-editorial text-lg font-bold text-[#1C1917]">{labels.addExtras}</h2>
+            <div className="grid gap-3">
+              {addons.map((addon) => (
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-center justify-between gap-4 rounded-2xl border px-4 py-3.5 transition-all",
+                    selectedAddonIds.includes(addon.id)
+                      ? "border-[#B85A2D] bg-[#FAF8F5] shadow-sm"
+                      : "border-[#DED7CB] bg-white hover:border-[#B85A2D]/50"
+                  )}
+                  key={addon.id}
+                >
+                  <span>
+                    <span className="block font-semibold text-[#1C1917]">{addon.name}</span>
+                    {addon.description ? (
+                      <span className="text-sm text-[#78716C] font-light">{addon.description}</span>
+                    ) : null}
                   </span>
-                  <input
-                    checked={selectedAddonIds.includes(addon.id)}
-                    className="h-5 w-5 accent-wahaj-teal"
-                    onChange={() => toggleAddon(addon.id)}
-                    type="checkbox"
-                  />
-                </span>
-              </label>
-            ))}
-          </div>
+                  <span className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-[#B85A2D]">
+                      +{formatPrice(addon.price)}
+                    </span>
+                    <input
+                      checked={selectedAddonIds.includes(addon.id)}
+                      className="h-5 w-5 rounded accent-[#B85A2D]"
+                      onChange={() => toggleAddon(addon.id)}
+                      type="checkbox"
+                    />
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-4 border-y border-concrete-100 py-5">
-          <div className="inline-flex h-12 items-center rounded-md border border-concrete-200 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-y border-[#E8E2D8] py-5">
+          <div className="inline-flex h-12 items-center rounded-full border border-[#DED7CB] bg-[#FAF8F5] p-1">
             <button
               aria-label="Decrease quantity"
-              className="grid h-12 w-12 place-items-center"
+              className="grid h-10 w-10 place-items-center rounded-full text-[#1C1917] transition hover:bg-[#EDE7DD]"
               onClick={() => setQuantity((current) => Math.max(1, current - 1))}
               type="button"
             >
-              <Minus size={18} />
+              <Minus size={16} />
             </button>
-            <span className="w-12 text-center font-semibold">{quantity}</span>
+            <span className="w-11 text-center font-semibold text-[#1C1917]">{quantity}</span>
             <button
               aria-label="Increase quantity"
-              className="grid h-12 w-12 place-items-center"
+              className="grid h-10 w-10 place-items-center rounded-full text-[#1C1917] transition hover:bg-[#EDE7DD]"
               onClick={() => setQuantity((current) => Math.min(99, current + 1))}
               type="button"
             >
-              <Plus size={18} />
+              <Plus size={16} />
             </button>
           </div>
           <div className="text-end">
-            <span className="block text-sm text-concrete-500">{labels.total}</span>
-            <span className="text-3xl font-bold text-concrete-900">{formatter.format(total)}</span>
+            <span className="block text-xs text-[#78716C]">{labels.total}</span>
+            <span className="font-editorial text-3xl font-black text-[#1C1917]">{formatPrice(total)}</span>
           </div>
         </div>
 
         {message ? (
           <p
             className={cn(
-              "rounded-md px-3 py-2 text-sm",
-              isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+              "rounded-xl border px-4 py-2.5 text-sm",
+              isSuccess
+                ? "border-[#CBD5C8] bg-[#E7ECE5]/80 text-[#2F463B]"
+                : "border-red-200 bg-red-50/90 text-red-800"
             )}
           >
             {message}
@@ -410,11 +429,11 @@ export function ProductCustomizer({
         </div>
       </div>
         {/* Mobile: fixed buy bar so total + actions stay reachable. */}
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-concrete-100 bg-white/95 p-3 shadow-soft backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E8E2D8] bg-[#F7F4EE]/95 p-3 shadow-soft backdrop-blur-md lg:hidden">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <div className="grid min-w-0 flex-1 content-center">
-              <span className="text-xs text-concrete-500">{labels.total}</span>
-              <span className="truncate text-lg font-bold text-concrete-900">{formatter.format(total)}</span>
+              <span className="text-xs text-[#78716C]">{labels.total}</span>
+              <span className="truncate font-editorial text-lg font-bold text-[#1C1917]">{formatPrice(total)}</span>
             </div>
             <Button className="flex-1" disabled={isPending || sizeRequired || (colors.length > 0 && !selectedColorId)} onClick={() => addToCart(false)}>
               <ShoppingBag size={18} /> {labels.addToCart}

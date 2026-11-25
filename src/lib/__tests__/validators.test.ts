@@ -3,7 +3,11 @@ import {
   adminProductSchema,
   addToCartSchema,
   checkoutSchema,
-  orderStatusInputSchema
+  loginSchema,
+  orderStatusInputSchema,
+  registerSchema,
+  resetPasswordConfirmSchema,
+  resetPasswordRequestSchema
 } from "@/lib/validators";
 
 const adminProductBase = {
@@ -65,7 +69,6 @@ describe("validators", () => {
         quantity: 1
       }).productColorId
     ).toBeNull();
-    // Omitted entirely also means "no color".
     expect(addToCartSchema.parse({ productId: "clzzzzzz00001abc", quantity: 1 }).productColorId).toBeNull();
   });
 
@@ -112,5 +115,79 @@ describe("validators", () => {
 
   it("rejects unknown order statuses", () => {
     expect(() => orderStatusInputSchema.parse({ status: "RETURNED", note: "" })).toThrow();
+  });
+
+  it("accepts unified login via email or Egyptian mobile number without password length oracle", () => {
+    expect(
+      loginSchema.parse({
+        identifier: "admin@wahaj.local",
+        password: "x"
+      }).identifier
+    ).toBe("admin@wahaj.local");
+
+    expect(
+      loginSchema.parse({
+        identifier: "01012345678",
+        password: "password123"
+      }).identifier
+    ).toBe("01012345678");
+
+    expect(
+      loginSchema.parse({
+        identifier: "+201012345678",
+        password: "password123"
+      }).identifier
+    ).toBe("+201012345678");
+  });
+
+  it("rejects invalid login identifiers", () => {
+    expect(() =>
+      loginSchema.parse({
+        identifier: "not-an-email-or-phone",
+        password: "password123"
+      })
+    ).toThrow();
+  });
+
+  it("validates registration email optionality and bcrypt 72-byte limit", () => {
+    const parsed = registerSchema.parse({
+      name: "Mona Ali",
+      phone: "01012345678",
+      email: "",
+      password: "password123"
+    });
+    expect(parsed.phone).toBe("01012345678");
+    expect(parsed.email).toBe("");
+
+    expect(() =>
+      registerSchema.parse({
+        name: "Mona Ali",
+        phone: "01012345678",
+        email: "",
+        password: "é".repeat(40)
+      })
+    ).toThrow();
+  });
+
+  it("validates password reset request and confirm schemas", () => {
+    expect(
+      resetPasswordRequestSchema.parse({ email: "  User@Example.com " }).email
+    ).toBe("User@Example.com");
+
+    expect(
+      resetPasswordConfirmSchema.parse({
+        token: "abcdefghijklmnopqrstuvwxyz1234",
+        password: "newpassword123",
+        confirmPassword: "newpassword123"
+      }).token
+    ).toBe("abcdefghijklmnopqrstuvwxyz1234");
+
+    expect(() =>
+      resetPasswordConfirmSchema.parse({
+        token: "abcdefghijklmnopqrstuvwxyz1234",
+        password: "newpassword123",
+        confirmPassword: "differentpassword"
+      })
+    ).toThrow();
   });
 });

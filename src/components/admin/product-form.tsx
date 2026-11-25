@@ -4,17 +4,28 @@ import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Eye, ImageIcon, Package, Palette, Ruler, Search, Sparkles } from "lucide-react";
+import { useAdminI18n } from "@/components/admin/admin-i18n-context";
+import { UploadField } from "@/components/admin/upload-field";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
-import { UploadField } from "@/components/admin/upload-field";
+import { interpolate } from "@/lib/admin-i18n";
 import { cn, SKU_SUGGESTED, suggestedProductSku, suggestProductSlug } from "@/lib/utils";
 
-type Option = { id: string; name: string; hexCode?: string; price?: string };
+type Option = {
+  id: string;
+  name: string;
+  nameEn?: string | null;
+  hexCode?: string;
+  price?: string;
+};
+
 type ProductInitial = {
   id?: string;
   name: string;
+  nameEn: string;
   slug: string;
   description: string;
+  descriptionEn: string;
   basePrice: string;
   categoryId: string;
   mainImage: string;
@@ -25,9 +36,11 @@ type ProductInitial = {
   bestSeller: boolean;
   sortOrder: number;
   seoTitle: string;
+  seoTitleEn: string;
   metaDescription: string;
+  metaDescriptionEn: string;
   canonicalUrl: string;
-  gallery: Array<{ url: string; alt: string; sortOrder: number }>;
+  gallery: Array<{ url: string; alt: string; altEn: string; sortOrder: number }>;
   colors: Array<{
     colorId: string;
     additionalPrice: string;
@@ -44,20 +57,29 @@ type ProductInitial = {
   addonIds: string[];
 };
 
+function formatOptionLabel(option: Option, locale: "ar" | "en") {
+  if (locale === "en" && option.nameEn) {
+    return `${option.nameEn} (${option.name})`;
+  }
+  return option.nameEn ? `${option.name} (${option.nameEn})` : option.name;
+}
+
 const steps = [
-  { key: "basic", label: "Basic", icon: Package },
-  { key: "images", label: "Images", icon: ImageIcon },
-  { key: "colors", label: "Colors", icon: Palette },
-  { key: "sizes", label: "Sizes", icon: Ruler },
-  { key: "addons", label: "Add-ons", icon: Sparkles },
-  { key: "seo", label: "SEO", icon: Search },
-  { key: "preview", label: "Preview", icon: Eye }
+  { key: "basic", icon: Package },
+  { key: "images", icon: ImageIcon },
+  { key: "colors", icon: Palette },
+  { key: "sizes", icon: Ruler },
+  { key: "addons", icon: Sparkles },
+  { key: "seo", icon: Search },
+  { key: "preview", icon: Eye }
 ] as const;
 
 const emptyProduct: ProductInitial = {
   name: "",
+  nameEn: "",
   slug: "",
   description: "",
+  descriptionEn: "",
   basePrice: "250",
   categoryId: "",
   mainImage: "",
@@ -68,7 +90,9 @@ const emptyProduct: ProductInitial = {
   bestSeller: false,
   sortOrder: 0,
   seoTitle: "",
+  seoTitleEn: "",
   metaDescription: "",
+  metaDescriptionEn: "",
   canonicalUrl: "",
   gallery: [],
   colors: [],
@@ -90,6 +114,9 @@ export function ProductForm({
   initial?: ProductInitial;
 }) {
   const router = useRouter();
+  const { locale, dict } = useAdminI18n();
+  const formCopy = dict.products.form;
+
   const [step, setStep] = useState<(typeof steps)[number]["key"]>("basic");
   const [product, setProduct] = useState<ProductInitial>(initial ?? emptyProduct);
   // A non-ASCII (Arabic) or missing slug is treated as "untouched", so the
@@ -101,7 +128,11 @@ export function ProductForm({
   // New products show a live SKU preview generated from the name; the real
   // unique value is created on the server at save time. Existing products
   // keep the SKU that was already assigned to them.
-  const skuPreview = product.id ? product.sku : product.name.trim() ? suggestedProductSku(product.name) : SKU_SUGGESTED;
+  const skuPreview = product.id
+    ? product.sku
+    : product.name.trim() || product.nameEn.trim()
+      ? suggestedProductSku(product.name, product.nameEn)
+      : SKU_SUGGESTED;
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -139,7 +170,9 @@ export function ProductForm({
   function updateColor(colorId: string, patch: Partial<ProductInitial["colors"][number]>) {
     setProduct((current) => ({
       ...current,
-      colors: current.colors.map((item) => (item.colorId === colorId ? { ...item, ...patch } : item))
+      colors: current.colors.map((item) =>
+        item.colorId === colorId ? { ...item, ...patch } : item
+      )
     }));
   }
 
@@ -171,7 +204,9 @@ export function ProductForm({
   function updateSize(sizeId: string, patch: Partial<ProductInitial["sizes"][number]>) {
     setProduct((current) => ({
       ...current,
-      sizes: current.sizes.map((item) => (item.sizeId === sizeId ? { ...item, ...patch } : item))
+      sizes: current.sizes.map((item) =>
+        item.sizeId === sizeId ? { ...item, ...patch } : item
+      )
     }));
   }
 
@@ -210,7 +245,7 @@ export function ProductForm({
         detail?: string;
       };
       if (!json.ok) {
-        setMessage([json.message ?? "Could not save product.", json.detail].filter(Boolean).join(" — "));
+        setMessage([json.message ?? formCopy.saveError, json.detail].filter(Boolean).join(" — "));
         return;
       }
       router.push("/admin/products");
@@ -218,50 +253,211 @@ export function ProductForm({
     });
   }
 
+  const previewTitle =
+    locale === "en"
+      ? `${product.nameEn || product.name || formCopy.untitledProduct}${
+          product.nameEn && product.name ? ` · ${product.name}` : ""
+        }`
+      : `${product.name || formCopy.untitledProduct}${product.nameEn ? ` · ${product.nameEn}` : ""}`;
+
+  const readiness = useMemo(() => {
+    const checks: Array<{
+      key: "arName" | "enName" | "category" | "pricingStock" | "photo" | "seo" | "options";
+      ok: boolean;
+      step: (typeof steps)[number]["key"];
+    }> = [
+      { key: "arName", ok: product.name.trim().length >= 2, step: "basic" },
+      { key: "enName", ok: product.nameEn.trim().length >= 2, step: "basic" },
+      { key: "category", ok: Boolean(product.categoryId), step: "basic" },
+      {
+        key: "pricingStock",
+        ok: Number(product.basePrice) > 0 && product.stockQuantity >= 0,
+        step: "basic"
+      },
+      { key: "photo", ok: product.mainImage.trim().length > 0, step: "images" },
+      {
+        key: "seo",
+        ok:
+          product.seoTitle.trim().length > 0 && product.metaDescription.trim().length > 0,
+        step: "seo"
+      },
+      {
+        key: "options",
+        ok:
+          product.colors.length > 0 ||
+          product.sizes.length > 0 ||
+          product.addonIds.length > 0,
+        step: "colors"
+      }
+    ];
+    const done = checks.filter((item) => item.ok).length;
+    const pct = Math.round((done / checks.length) * 100);
+
+    const sizePrices = product.sizes
+      .map((s) => Number(s.price))
+      .filter((v) => Number.isFinite(v) && v > 0);
+    const baseMin = sizePrices.length ? Math.min(...sizePrices) : Number(product.basePrice) || 0;
+    const baseMax = sizePrices.length ? Math.max(...sizePrices) : Number(product.basePrice) || 0;
+    const colorExtras = product.colors
+      .map((c) => Number(c.additionalPrice))
+      .filter((v) => Number.isFinite(v) && v >= 0);
+    const maxColorExtra = colorExtras.length ? Math.max(...colorExtras) : 0;
+    const addonsSum = product.addonIds.reduce((sum, id) => {
+      const match = addons.find((a) => a.id === id);
+      return sum + (match ? Number(match.price ?? 0) : 0);
+    }, 0);
+
+    return {
+      checks,
+      done,
+      total: checks.length,
+      pct,
+      minPrice: Math.round(baseMin),
+      maxPrice: Math.round(baseMax + maxColorExtra + addonsSum)
+    };
+  }, [product, addons]);
+
+  const ringRadius = 20;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringDash = (readiness.pct / 100) * ringCircumference;
+
   return (
     <div className="grid gap-6">
+      <section className="rounded-2xl border border-[#E5DDD0] bg-white p-4 sm:p-5 shadow-[0_16px_38px_-18px_rgba(28,25,23,0.08)]">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+              <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48">
+                <circle cx="24" cy="24" r={ringRadius} fill="none" stroke="#EDE8E0" strokeWidth="4.5" />
+                <circle
+                  cx="24"
+                  cy="24"
+                  r={ringRadius}
+                  fill="none"
+                  stroke="#B85A2D"
+                  strokeWidth="4.5"
+                  strokeLinecap="round"
+                  strokeDasharray={`${ringDash} ${ringCircumference}`}
+                />
+              </svg>
+              <span className="absolute font-mono text-[11px] font-bold text-[#1C1917]" dir="ltr">
+                {readiness.pct}%
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[#1C1917]">{formCopy.readiness.title}</p>
+              <p className="text-xs text-[#78716C]">
+                {interpolate(formCopy.readiness.completeLabel, {
+                  done: readiness.done,
+                  total: readiness.total
+                })}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-full border border-[#EDE8E0] bg-[#FAF8F5] px-3.5 py-1.5 text-xs text-[#665E57]">
+            {formCopy.readiness.priceSpread}:{" "}
+            <strong className="font-mono font-bold text-[#1C1917]" dir="ltr">
+              {readiness.minPrice === readiness.maxPrice
+                ? `${readiness.minPrice} EGP`
+                : `${readiness.minPrice}–${readiness.maxPrice} EGP`}
+            </strong>
+          </div>
+        </div>
+
+        <div className="mt-3.5 flex flex-wrap gap-1.5">
+          {readiness.checks.map((item) => (
+            <button
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                item.ok
+                  ? "border-[#CBD5C8] bg-[#E7ECE5] text-[#2F463B]"
+                  : "border-[#E5DDD0] bg-[#FAF8F5] text-[#78716C] hover:border-[#B85A2D] hover:text-[#1C1917]"
+              )}
+              key={item.key}
+              onClick={() => setStep(item.step)}
+              type="button"
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  item.ok ? "bg-[#2F463B]" : "bg-[#C7924D]"
+                )}
+              />
+              {formCopy.readiness.checks[item.key]}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <div className="flex flex-wrap gap-2">
         {steps.map((item, index) => {
           const Icon = item.icon;
           return (
             <button
               className={cn(
-                "inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold",
-                item.key === step ? "bg-wahaj-teal text-white" : "bg-white text-concrete-700"
+                "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs sm:text-sm font-medium transition-all",
+                item.key === step
+                  ? "border-[#1C1917] bg-[#1C1917] text-white shadow-sm"
+                  : "border-[#DED7CB] bg-white text-[#57534E] hover:border-[#B85A2D] hover:text-[#1C1917]"
               )}
               key={item.key}
               onClick={() => setStep(item.key)}
               type="button"
             >
-              {index < currentIndex ? <Check size={16} /> : <Icon size={16} />}
-              {item.label}
+              {index < currentIndex ? (
+                <Check
+                  size={15}
+                  className={item.key === step ? "text-[#E5A776]" : "text-[#B85A2D]"}
+                />
+              ) : (
+                <Icon size={15} />
+              )}
+              {formCopy.steps[item.key]}
             </button>
           );
         })}
       </div>
 
-      <div className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
+      <div className="rounded-2xl border border-[#E5DDD0] bg-white p-6 shadow-[0_16px_38px_-18px_rgba(28,25,23,0.08)]">
         {step === "basic" ? (
           <div className="grid gap-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Product name">
+              <Field label={dict.common.nameArPrimary}>
                 <Input
+                  dir="rtl"
                   value={product.name}
                   onChange={(event) => {
                     const name = event.target.value;
                     setProduct((current) => ({
                       ...current,
                       name,
-                      slug: slugTouched ? current.slug : suggestProductSlug(name, "")
+                      slug: slugTouched
+                        ? current.slug
+                        : suggestProductSlug(name, "", current.nameEn)
                     }));
                   }}
                 />
               </Field>
-              <Field
-                hint="Auto-generated. Leave blank and the server will create one from the name/SKU."
-                label="Slug"
-              >
+              <Field label={dict.common.nameEnSecondary}>
                 <Input
+                  dir="ltr"
+                  value={product.nameEn}
+                  onChange={(event) => {
+                    const nameEn = event.target.value;
+                    setProduct((current) => ({
+                      ...current,
+                      nameEn,
+                      slug: slugTouched
+                        ? current.slug
+                        : suggestProductSlug(current.name, "", nameEn)
+                    }));
+                  }}
+                />
+              </Field>
+              <Field hint={formCopy.slugHint} label={formCopy.slug}>
+                <Input
+                  dir="ltr"
                   value={product.slug}
                   onChange={(event) => {
                     setSlugTouched(true);
@@ -269,36 +465,35 @@ export function ProductForm({
                   }}
                 />
               </Field>
-              <Field
-                hint="Auto-generated from the product name. No need to fill this in — the unique code is created for you on save."
-                label="SKU"
-              >
-                <Input readOnly value={skuPreview} />
+              <Field hint={formCopy.skuHint} label={formCopy.sku}>
+                <Input dir="ltr" readOnly value={skuPreview} />
               </Field>
-              <Field label="Category">
+              <Field label={formCopy.category}>
                 <select
-                  className="min-h-11 rounded-md border border-concrete-200 px-3"
+                  className="min-h-11 w-full min-w-0 rounded-xl border border-[#DED7CB] bg-white px-4 text-sm text-[#1C1917] outline-none transition-all focus:border-[#B85A2D] focus:ring-2 focus:ring-[#B85A2D]/20"
                   value={product.categoryId}
                   onChange={(event) => update("categoryId", event.target.value)}
                 >
-                  <option value="">Choose category</option>
+                  <option value="">{formCopy.chooseCategory}</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
-                      {category.name}
+                      {formatOptionLabel(category, locale)}
                     </option>
                   ))}
                 </select>
               </Field>
-              <Field label="Base price">
+              <Field label={formCopy.basePrice}>
                 <Input
+                  dir="ltr"
                   min="1"
                   type="number"
                   value={product.basePrice}
                   onChange={(event) => update("basePrice", event.target.value)}
                 />
               </Field>
-              <Field label="Stock quantity">
+              <Field label={formCopy.stockQuantity}>
                 <Input
+                  dir="ltr"
                   min="0"
                   type="number"
                   value={product.stockQuantity}
@@ -306,22 +501,35 @@ export function ProductForm({
                 />
               </Field>
             </div>
-            <Field label="Description">
-              <Textarea
-                value={product.description}
-                onChange={(event) => update("description", event.target.value)}
-              />
-            </Field>
-            <div className="flex flex-wrap gap-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label={dict.common.descriptionArPrimary}>
+                <Textarea
+                  dir="rtl"
+                  value={product.description}
+                  onChange={(event) => update("description", event.target.value)}
+                />
+              </Field>
+              <Field label={dict.common.descriptionEnSecondary}>
+                <Textarea
+                  dir="ltr"
+                  value={product.descriptionEn}
+                  onChange={(event) => update("descriptionEn", event.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="flex flex-wrap gap-5 pt-1">
               {(["active", "featured", "bestSeller"] as const).map((key) => (
-                <label className="inline-flex items-center gap-2 text-sm font-semibold" key={key}>
+                <label
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[#1C1917]"
+                  key={key}
+                >
                   <input
                     checked={Boolean(product[key])}
-                    className="h-5 w-5 accent-wahaj-teal"
+                    className="h-5 w-5 rounded accent-[#B85A2D]"
                     onChange={(event) => update(key, event.target.checked)}
                     type="checkbox"
                   />
-                  {key}
+                  <span>{formCopy.flags[key]}</span>
                 </label>
               ))}
             </div>
@@ -331,33 +539,42 @@ export function ProductForm({
         {step === "images" ? (
           <div className="grid gap-5">
             <UploadField
-              label="Storefront main photo"
+              label={formCopy.mainPhoto}
               value={product.mainImage}
               onChange={(value) => update("mainImage", value)}
             />
-            <p className="-mt-3 text-sm text-concrete-500">
-              This photo appears on product cards and when the product link is shared.
-            </p>
+            <p className="-mt-3 text-sm text-[#78716C] font-light">{formCopy.mainPhotoHint}</p>
             <div className="grid gap-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold">Gallery</h2>
+                <h2 className="font-editorial text-xl font-bold text-[#1C1917]">
+                  {formCopy.gallery}
+                </h2>
                 <Button
                   onClick={() =>
                     update("gallery", [
                       ...product.gallery,
-                      { url: product.mainImage, alt: product.name, sortOrder: product.gallery.length }
+                      {
+                        url: product.mainImage,
+                        alt: product.name,
+                        altEn: product.nameEn,
+                        sortOrder: product.gallery.length
+                      }
                     ])
                   }
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  size="sm"
                 >
-                  Add image
+                  {formCopy.addImage}
                 </Button>
               </div>
               {product.gallery.map((image, index) => (
-                <div className="grid gap-3 rounded-md bg-concrete-50 p-3 md:grid-cols-[1fr_1fr_auto]" key={index}>
+                <div
+                  className="grid gap-3 rounded-2xl border border-[#EDE8E0] bg-[#FAF8F5] p-4"
+                  key={index}
+                >
                   <UploadField
-                    label="Image URL"
+                    label={dict.common.imageUrl}
                     value={image.url}
                     onChange={(url) => {
                       const gallery = product.gallery.slice();
@@ -366,35 +583,56 @@ export function ProductForm({
                       if (product.mainImage === image.url) update("mainImage", url);
                     }}
                   />
-                  <Field label="Alt text">
-                    <Input
-                      value={image.alt}
-                      onChange={(event) => {
-                        const gallery = product.gallery.slice();
-                        gallery[index] = { ...image, alt: event.target.value };
-                        update("gallery", gallery);
-                      }}
-                    />
-                  </Field>
-                  <div className="flex flex-wrap items-end gap-2">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label={formCopy.altArPrimary}>
+                      <Input
+                        dir="rtl"
+                        value={image.alt}
+                        onChange={(event) => {
+                          const gallery = product.gallery.slice();
+                          gallery[index] = { ...image, alt: event.target.value };
+                          update("gallery", gallery);
+                        }}
+                      />
+                    </Field>
+                    <Field label={formCopy.altEnSecondary}>
+                      <Input
+                        dir="ltr"
+                        value={image.altEn}
+                        onChange={(event) => {
+                          const gallery = product.gallery.slice();
+                          gallery[index] = { ...image, altEn: event.target.value };
+                          update("gallery", gallery);
+                        }}
+                      />
+                    </Field>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       aria-pressed={product.mainImage === image.url}
-                      className="self-end"
                       disabled={!image.url}
                       onClick={() => update("mainImage", image.url)}
                       type="button"
+                      size="sm"
                       variant={product.mainImage === image.url ? "secondary" : "ghost"}
                     >
-                      {product.mainImage === image.url ? <Check size={16} /> : null}
-                      {product.mainImage === image.url ? "Main photo" : "Use as main photo"}
+                      {product.mainImage === image.url ? <Check size={15} /> : null}
+                      {product.mainImage === image.url
+                        ? formCopy.mainPhotoBadge
+                        : formCopy.useAsMainPhoto}
                     </Button>
                     <Button
-                      className="self-end"
-                      onClick={() => update("gallery", product.gallery.filter((_, itemIndex) => itemIndex !== index))}
+                      onClick={() =>
+                        update(
+                          "gallery",
+                          product.gallery.filter((_, itemIndex) => itemIndex !== index)
+                        )
+                      }
                       type="button"
+                      size="sm"
                       variant="ghost"
                     >
-                      Remove
+                      {formCopy.remove}
                     </Button>
                   </div>
                 </div>
@@ -405,32 +643,36 @@ export function ProductForm({
 
         {step === "colors" ? (
           <div className="grid gap-4">
-            <p className="text-sm text-concrete-500">
+            <p className="text-sm text-[#78716C] font-light">
               {product.colors.length === 0
-                ? "No colors selected — this is fine. You can still save and publish the product without colors."
-                : `${product.colors.length} color option(s) selected. Customers without a color requirement can skip this step entirely.`}
+                ? formCopy.noColorsSelected
+                : interpolate(formCopy.colorsSelectedCount, { count: product.colors.length })}
             </p>
             {colors.map((color) => {
               const selected = product.colors.find((item) => item.colorId === color.id);
               return (
-                <div className="rounded-md border border-concrete-100 p-4" key={color.id}>
-                  <label className="flex items-center gap-3 font-semibold">
+                <div
+                  className="rounded-2xl border border-[#EDE8E0] bg-[#FAF8F5] p-4"
+                  key={color.id}
+                >
+                  <label className="flex items-center gap-3 font-medium text-[#1C1917]">
                     <input
                       checked={selectedColorIds.has(color.id)}
-                      className="h-5 w-5 accent-wahaj-teal"
+                      className="h-5 w-5 rounded accent-[#B85A2D]"
                       onChange={() => toggleColor(color.id)}
                       type="checkbox"
                     />
                     <span
-                      className="h-6 w-6 rounded-full border"
+                      className="h-6 w-6 rounded-full border border-[#DED7CB]"
                       style={{ background: color.hexCode }}
                     />
-                    {color.name}
+                    <span>{formatOptionLabel(color, locale)}</span>
                   </label>
                   {selected ? (
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <Field label="Additional price">
+                      <Field label={formCopy.additionalPrice}>
                         <Input
+                          dir="ltr"
                           min="0"
                           type="number"
                           value={selected.additionalPrice}
@@ -441,7 +683,7 @@ export function ProductForm({
                       </Field>
                       <div className="grid content-end gap-2">
                         <UploadField
-                          label="Variant image"
+                          label={formCopy.variantImage}
                           value={selected.imageUrl}
                           onChange={(imageUrl) => updateColor(color.id, { imageUrl })}
                         />
@@ -451,10 +693,13 @@ export function ProductForm({
                           disabled={!selected.imageUrl}
                           onClick={() => update("mainImage", selected.imageUrl)}
                           type="button"
+                          size="sm"
                           variant={product.mainImage === selected.imageUrl ? "secondary" : "ghost"}
                         >
-                          {product.mainImage === selected.imageUrl ? <Check size={16} /> : null}
-                          {product.mainImage === selected.imageUrl ? "Main photo" : "Use as main photo"}
+                          {product.mainImage === selected.imageUrl ? <Check size={15} /> : null}
+                          {product.mainImage === selected.imageUrl
+                            ? formCopy.mainPhotoBadge
+                            : formCopy.useAsMainPhoto}
                         </Button>
                       </div>
                     </div>
@@ -467,31 +712,32 @@ export function ProductForm({
 
         {step === "sizes" ? (
           <div className="grid gap-4">
-            <p className="text-sm text-concrete-500">
+            <p className="text-sm text-[#78716C] font-light">
               {product.sizes.length === 0
-                ? "No sizes selected — customers can add the product as-is. Pick a size to require customers to choose one."
-                : `${product.sizes.length} size option(s) selected. Customers must pick one size, and each size has its own full price.`}
+                ? formCopy.noSizesSelected
+                : interpolate(formCopy.sizesSelectedCount, { count: product.sizes.length })}
             </p>
             {sizes.length === 0 ? (
-              <p className="text-sm text-concrete-500">No sizes exist yet. Create them under Sizes first.</p>
+              <p className="text-sm text-[#78716C] font-light">{formCopy.noSizesExist}</p>
             ) : null}
             {sizes.map((size) => {
               const selected = product.sizes.find((item) => item.sizeId === size.id);
               return (
-                <div className="rounded-md border border-concrete-100 p-4" key={size.id}>
-                  <label className="flex items-center gap-3 font-semibold">
+                <div className="rounded-2xl border border-[#EDE8E0] bg-[#FAF8F5] p-4" key={size.id}>
+                  <label className="flex items-center gap-3 font-medium text-[#1C1917]">
                     <input
                       checked={selectedSizeIds.has(size.id)}
-                      className="h-5 w-5 accent-wahaj-teal"
+                      className="h-5 w-5 rounded accent-[#B85A2D]"
                       onChange={() => toggleSize(size.id)}
                       type="checkbox"
                     />
-                    {size.name}
+                    <span>{formatOptionLabel(size, locale)}</span>
                   </label>
                   {selected ? (
                     <div className="mt-4 max-w-60">
-                      <Field label="Full price for this product">
+                      <Field label={formCopy.fullPriceForProduct}>
                         <Input
+                          dir="ltr"
                           min="1"
                           type="number"
                           value={selected.price}
@@ -509,13 +755,20 @@ export function ProductForm({
         {step === "addons" ? (
           <div className="grid gap-3">
             {addons.map((addon) => (
-              <label className="flex items-center justify-between rounded-md border border-concrete-100 p-4" key={addon.id}>
-                <span className="font-semibold">{addon.name}</span>
+              <label
+                className="flex cursor-pointer items-center justify-between rounded-2xl border border-[#EDE8E0] bg-[#FAF8F5] p-4 transition hover:border-[#B85A2D]/50"
+                key={addon.id}
+              >
+                <span className="font-medium text-[#1C1917]">
+                  {formatOptionLabel(addon, locale)}
+                </span>
                 <span className="inline-flex items-center gap-3">
-                  <span className="text-sm text-concrete-500">+{addon.price} EGP</span>
+                  <span className="text-sm font-medium text-[#B85A2D]" dir="ltr">
+                    +{addon.price} {dict.common.egp}
+                  </span>
                   <input
                     checked={product.addonIds.includes(addon.id)}
-                    className="h-5 w-5 accent-wahaj-teal"
+                    className="h-5 w-5 rounded accent-[#B85A2D]"
                     onChange={() => toggleAddon(addon.id)}
                     type="checkbox"
                   />
@@ -527,17 +780,41 @@ export function ProductForm({
 
         {step === "seo" ? (
           <div className="grid gap-4">
-            <Field label="SEO title">
-              <Input value={product.seoTitle} onChange={(event) => update("seoTitle", event.target.value)} />
-            </Field>
-            <Field label="Meta description">
-              <Textarea
-                value={product.metaDescription}
-                onChange={(event) => update("metaDescription", event.target.value)}
-              />
-            </Field>
-            <Field label="Canonical URL">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label={formCopy.seoTitleAr}>
+                <Input
+                  dir="rtl"
+                  value={product.seoTitle}
+                  onChange={(event) => update("seoTitle", event.target.value)}
+                />
+              </Field>
+              <Field label={formCopy.seoTitleEn}>
+                <Input
+                  dir="ltr"
+                  value={product.seoTitleEn}
+                  onChange={(event) => update("seoTitleEn", event.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label={formCopy.metaDescriptionAr}>
+                <Textarea
+                  dir="rtl"
+                  value={product.metaDescription}
+                  onChange={(event) => update("metaDescription", event.target.value)}
+                />
+              </Field>
+              <Field label={formCopy.metaDescriptionEn}>
+                <Textarea
+                  dir="ltr"
+                  value={product.metaDescriptionEn}
+                  onChange={(event) => update("metaDescriptionEn", event.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label={formCopy.canonicalUrl}>
               <Input
+                dir="ltr"
                 value={product.canonicalUrl}
                 onChange={(event) => update("canonicalUrl", event.target.value)}
               />
@@ -546,14 +823,20 @@ export function ProductForm({
         ) : null}
 
         {step === "preview" ? (
-          <div className="grid gap-4 text-sm text-concrete-700">
+          <div className="grid gap-4 text-sm text-[#57534E] font-light">
             <p>
-              <strong>{product.name || "Untitled product"}</strong> will publish with {product.colors.length} color
-              option(s), {product.sizes.length} size option(s), {product.addonIds.length} add-on(s), stock{" "}
-              {product.stockQuantity}, and base price {product.basePrice} EGP.
+              <strong className="font-semibold text-[#1C1917]">{previewTitle}</strong> —{" "}
+              {interpolate(formCopy.previewSummary, {
+                name: previewTitle,
+                colors: product.colors.length,
+                sizes: product.sizes.length,
+                addons: product.addonIds.length,
+                stock: product.stockQuantity,
+                price: product.basePrice
+              })}
             </p>
             {product.mainImage ? (
-              <div className="relative h-80 overflow-hidden rounded-md bg-concrete-100">
+              <div className="relative h-80 overflow-hidden rounded-2xl bg-[#EDE7DD]">
                 <Image alt="" className="object-cover" fill src={product.mainImage} />
               </div>
             ) : null}
@@ -561,28 +844,32 @@ export function ProductForm({
         ) : null}
       </div>
 
-      {message ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{message}</p> : null}
+      {message ? (
+        <p className="rounded-xl border border-red-200 bg-red-50/90 px-4 py-2.5 text-sm text-red-800">
+          {message}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap justify-between gap-3">
         <Button
           disabled={currentIndex === 0}
           onClick={() => setStep(steps[Math.max(0, currentIndex - 1)].key)}
           type="button"
-          variant="ghost"
+          variant="outline"
         >
-          Previous
+          {formCopy.previous}
         </Button>
         <div className="flex gap-3">
           <Button
             disabled={currentIndex === steps.length - 1}
             onClick={() => setStep(steps[Math.min(steps.length - 1, currentIndex + 1)].key)}
             type="button"
-            variant="ghost"
+            variant="outline"
           >
-            Next
+            {formCopy.next}
           </Button>
           <Button disabled={pending} onClick={save} type="button">
-            {pending ? "Saving..." : "Save product"}
+            {pending ? dict.common.saving : formCopy.saveProduct}
           </Button>
         </div>
       </div>

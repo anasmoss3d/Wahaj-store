@@ -43,10 +43,10 @@ export function WishlistButton({
     <button
       aria-label={saved ? labels.remove : isLoggedIn ? labels.save : labels.login}
       className={cn(
-        "inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition disabled:opacity-50",
+        "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-xs sm:text-sm font-medium transition-all duration-300 disabled:opacity-50",
         saved
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-concrete-200 bg-white text-concrete-700 hover:border-red-200"
+          ? "border-[#B85A2D]/40 bg-[#FAF8F5] text-[#B85A2D]"
+          : "border-[#DED7CB] bg-white text-[#1C1917] hover:border-[#B85A2D] hover:text-[#B85A2D]"
       )}
       disabled={pending}
       onClick={toggle}

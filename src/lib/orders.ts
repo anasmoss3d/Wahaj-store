@@ -10,6 +10,7 @@ import { calculateLinePrice, canMoveOrderStatus } from "@/lib/pricing";
 import { CART_COOKIE, hashToken, readCookie } from "@/lib/sessions";
 import { notifyTelegramNewOrder } from "@/lib/notifications";
 import { resolveShippingCents } from "@/lib/shipping";
+import { getLocale, pickLocalized } from "@/lib/i18n";
 import { getProductColorImageUrl } from "@/lib/product-images";
 
 export function createTrackingToken() {
@@ -41,23 +42,22 @@ export async function createOrderFromCart(input: {
   paymentMethod?: "CASH_ON_DELIVERY" | "INSTAPAY";
   paymentReceiptUrl?: string | null;
 }) {
-  const user = await getCurrentUser();
+  const [user, locale] = await Promise.all([getCurrentUser(), getLocale()]);
   if (!user) {
     throw new AppError("Please sign in or create an account to place your order.");
   }
   const cartSessionId = await readCookie(CART_COOKIE);
   const trackingToken = createTrackingToken();
 
-  if (!cartSessionId) {
-    throw new AppError("Your cart is empty.");
-  }
-
   const paymentMethod = input.paymentMethod === "INSTAPAY" ? "INSTAPAY" : "CASH_ON_DELIVERY";
   if (paymentMethod === "INSTAPAY" && !input.paymentReceiptUrl) {
     throw new AppError("Payment receipt is required for InstaPay orders.");
   }
 
-  const cartOwnershipWhere = [{ userId: user.id }, { sessionId: cartSessionId }];
+  const cartOwnershipWhere = [
+    { userId: user.id },
+    ...(cartSessionId ? [{ sessionId: cartSessionId, userId: null }] : [])
+  ];
 
   // All slow reads and price calculations happen OUTSIDE the write transaction:
   // on serverless + pooled Postgres every query costs latency, and the default
@@ -153,7 +153,7 @@ export async function createOrderFromCart(input: {
           customerName: input.customerName,
           phone: input.phone,
           whatsapp: input.whatsapp || null,
-          email: input.email || user?.email || null,
+          email: input.email || user.email || null,
           governorate: input.governorate,
           city: input.city,
           fullAddress: input.fullAddress,
@@ -170,13 +170,17 @@ export async function createOrderFromCart(input: {
           items: {
             create: orderItems.map(({ item, addons, calculated }) => ({
               productId: item.productId,
-              productName: item.product.name,
+              productName: pickLocalized(locale, item.product.name, item.product.nameEn),
               sku: item.product.sku,
               // No-color lines snapshot "" / "" / 0 — keeps historical rows
               // non-nullable so older orders stay valid.
-              selectedColorName: item.productColor?.color.name ?? "",
+              selectedColorName: item.productColor
+                ? pickLocalized(locale, item.productColor.color.name, item.productColor.color.nameEn)
+                : "",
               selectedColorHex: item.productColor?.color.hexCode ?? "",
-              selectedSizeName: item.productSize?.size.name ?? "",
+              selectedSizeName: item.productSize
+                ? pickLocalized(locale, item.productSize.size.name, item.productSize.size.nameEn)
+                : "",
               colorAdditionalPrice: item.productColor?.additionalPrice ?? 0,
               basePrice: item.product.basePrice,
               finalUnitPrice: calculated.unitPrice,
@@ -185,13 +189,13 @@ export async function createOrderFromCart(input: {
               imageUrl: item.productColor
                 ? getProductColorImageUrl(
                     item.product.slug,
-                    item.productColor.color.name,
+                    item.productColor.color.nameEn ?? item.productColor.color.name,
                     item.productColor.imageUrl || item.product.mainImage
                   )
                 : item.product.mainImage,
               addons: {
                 create: addons.map((addon) => ({
-                  addonName: addon.name,
+                  addonName: pickLocalized(locale, addon.name, addon.nameEn),
                   addonPrice: addon.price,
                   imageUrl: addon.imageUrl
                 }))

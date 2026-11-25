@@ -2,6 +2,7 @@ import { StorefrontFooter } from "@/components/storefront/footer";
 import { StorefrontHeader } from "@/components/storefront/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -23,31 +24,39 @@ export default async function OrdersPage() {
   return (
     <>
       <StorefrontHeader />
-      <main className="mx-auto max-w-4xl px-4 py-10">
-        <h1 className="text-4xl font-bold text-concrete-900">{dict.trackOrder}</h1>
-        <form className="mt-6 grid gap-3 rounded-md border border-concrete-100 bg-white p-5 shadow-soft" action="/orders/lookup">
-          <p className="text-sm leading-7 text-concrete-600">{dict.trackHint}</p>
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-            <Input name="orderNumber" placeholder="WAH-20261006-0001" />
-            <Button type="submit">{dict.trackBtn}</Button>
-          </div>
-        </form>
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-12 py-10 sm:py-14">
+        <h1 className="font-editorial text-3xl sm:text-4xl lg:text-5xl font-black text-[#1C1917]">{dict.trackOrder}</h1>
+        <Card className="mt-7 rounded-3xl border-[#E5DDD0]">
+          <CardContent className="p-6 sm:p-8">
+            <form className="grid gap-4" action="/orders/lookup">
+              <p className="text-sm leading-relaxed text-[#665E57] font-light">{dict.trackHint}</p>
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <Input name="orderNumber" placeholder="WAH-20261006-0001" className="h-11" required />
+                <Button type="submit">{dict.trackBtn}</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
         {orders.length ? (
-          <section className="mt-10">
-            <h2 className="text-2xl font-bold text-concrete-900">{dict.myOrders}</h2>
-            <div className="mt-4 grid gap-3">
+          <section className="mt-12">
+            <h2 className="font-editorial text-2xl sm:text-3xl font-black text-[#1C1917]">{dict.myOrders}</h2>
+            <div className="mt-5 grid gap-3.5">
               {orders.map((order) => (
                 <a
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-concrete-100 bg-white p-4 shadow-soft"
+                  className="block transition-transform duration-300 hover:-translate-y-0.5"
                   href={`/orders/${order.orderNumber}`}
                   key={order.id}
                 >
-                  <span>
-                    <span className="block font-bold text-concrete-900">{order.orderNumber}</span>
-                    <span className="text-sm text-concrete-500">{formatMoney(order.grandTotal)}</span>
-                  </span>
-                  <StatusBadge locale={locale} status={order.status} />
+                  <Card className="border-[#E5DDD0] transition-shadow hover:shadow-[0_18px_42px_-16px_rgba(28,25,23,0.12)]">
+                    <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+                      <div>
+                        <span className="block font-editorial text-lg font-bold text-[#1C1917]">{order.orderNumber}</span>
+                        <span className="text-sm font-medium text-[#B85A2D]">{formatMoney(order.grandTotal, "EGP", locale)}</span>
+                      </div>
+                      <StatusBadge locale={locale} status={order.status} />
+                    </CardContent>
+                  </Card>
                 </a>
               ))}
             </div>

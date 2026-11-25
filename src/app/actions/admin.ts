@@ -2,9 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import type { ActionState } from "@/app/actions/auth";
+import { requireAdminApi } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { safeErrorMessage } from "@/lib/errors";
+import { getLocale } from "@/lib/i18n";
+import {
+  deleteOrder,
+  updateOrderCustomer,
+  updateOrderItemQuantity,
+  updateOrderStatus
+} from "@/lib/orders";
 import { PERMISSIONS } from "@/lib/rbac";
 import { assertSameOrigin } from "@/lib/security";
 import { upsertStoreSettings } from "@/lib/settings";
@@ -20,8 +28,6 @@ import {
   sizeInputSchema,
   storeSettingsSchema
 } from "@/lib/validators";
-import { deleteOrder, updateOrderCustomer, updateOrderItemQuantity, updateOrderStatus } from "@/lib/orders";
-import type { ActionState } from "@/app/actions/auth";
 
 function value(formData: FormData, key: string) {
   const item = formData.get(key);
@@ -32,22 +38,80 @@ function checkbox(formData: FormData, key: string) {
   return formData.get(key) === "on";
 }
 
+function optionalEn(formData: FormData, key: string) {
+  const trimmed = value(formData, key).trim();
+  return trimmed || null;
+}
+
+async function msg(ar: string, en: string) {
+  return (await getLocale()) === "ar" ? ar : en;
+}
+
+function parseCategoryData(formData: FormData) {
+  const parsed = categoryInputSchema.parse({
+    name: value(formData, "name"),
+    nameEn: value(formData, "nameEn"),
+    slug: value(formData, "slug"),
+    description: value(formData, "description"),
+    descriptionEn: value(formData, "descriptionEn"),
+    imageUrl: value(formData, "imageUrl"),
+    active: checkbox(formData, "active"),
+    sortOrder: Number(value(formData, "sortOrder") || 0)
+  });
+  return {
+    ...parsed,
+    nameEn: optionalEn(formData, "nameEn"),
+    descriptionEn: optionalEn(formData, "descriptionEn")
+  };
+}
+
+function parseColorData(formData: FormData) {
+  const parsed = colorInputSchema.parse({
+    name: value(formData, "name"),
+    nameEn: value(formData, "nameEn"),
+    hexCode: value(formData, "hexCode"),
+    active: checkbox(formData, "active"),
+    sortOrder: Number(value(formData, "sortOrder") || 0)
+  });
+  return { ...parsed, nameEn: optionalEn(formData, "nameEn") };
+}
+
+function parseSizeData(formData: FormData) {
+  const parsed = sizeInputSchema.parse({
+    name: value(formData, "name"),
+    nameEn: value(formData, "nameEn"),
+    active: checkbox(formData, "active"),
+    sortOrder: Number(value(formData, "sortOrder") || 0)
+  });
+  return { ...parsed, nameEn: optionalEn(formData, "nameEn") };
+}
+
+function parseAddonData(formData: FormData) {
+  const parsed = addonInputSchema.parse({
+    name: value(formData, "name"),
+    nameEn: value(formData, "nameEn"),
+    description: value(formData, "description"),
+    descriptionEn: value(formData, "descriptionEn"),
+    price: value(formData, "price"),
+    imageUrl: value(formData, "imageUrl"),
+    active: checkbox(formData, "active"),
+    sortOrder: Number(value(formData, "sortOrder") || 0)
+  });
+  return {
+    ...parsed,
+    nameEn: optionalEn(formData, "nameEn"),
+    descriptionEn: optionalEn(formData, "descriptionEn")
+  };
+}
+
 export async function createCategoryAction(
   _state: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = categoryInputSchema.parse({
-      name: value(formData, "name"),
-      slug: value(formData, "slug"),
-      description: value(formData, "description"),
-      imageUrl: value(formData, "imageUrl"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
-    });
-    const row = await prisma.category.create({ data: parsed });
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.category.create({ data: parseCategoryData(formData) });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -56,12 +120,18 @@ export async function createCategoryAction(
         entityId: row.id
       }
     });
+    revalidatePath("/");
     revalidatePath("/admin/categories");
     revalidatePath("/products");
-    return { success: "Category created." };
+    return { success: await msg("تم إنشاء الفئة بنجاح.", "Category created.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not create category.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر إنشاء الفئة.", "Could not create category.")
+      )
+    };
   }
 }
 
@@ -71,14 +141,8 @@ export async function createColorAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = colorInputSchema.parse({
-      name: value(formData, "name"),
-      hexCode: value(formData, "hexCode"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
-    });
-    const row = await prisma.color.create({ data: parsed });
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.color.create({ data: parseColorData(formData) });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -88,10 +152,15 @@ export async function createColorAction(
       }
     });
     revalidatePath("/admin/colors");
-    return { success: "Color created." };
+    return { success: await msg("تم إنشاء اللون بنجاح.", "Color created.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not create color.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر إنشاء اللون.", "Could not create color.")
+      )
+    };
   }
 }
 
@@ -101,16 +170,8 @@ export async function createAddonAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = addonInputSchema.parse({
-      name: value(formData, "name"),
-      description: value(formData, "description"),
-      price: value(formData, "price"),
-      imageUrl: value(formData, "imageUrl"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
-    });
-    const row = await prisma.addon.create({ data: parsed });
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.addon.create({ data: parseAddonData(formData) });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -120,10 +181,15 @@ export async function createAddonAction(
       }
     });
     revalidatePath("/admin/addons");
-    return { success: "Add-on created." };
+    return { success: await msg("تم إنشاء الإضافة بنجاح.", "Add-on created.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not create add-on.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر إنشاء الإضافة.", "Could not create add-on.")
+      )
+    };
   }
 }
 
@@ -133,13 +199,8 @@ export async function createSizeAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = sizeInputSchema.parse({
-      name: value(formData, "name"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
-    });
-    const row = await prisma.size.create({ data: parsed });
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.size.create({ data: parseSizeData(formData) });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -149,10 +210,15 @@ export async function createSizeAction(
       }
     });
     revalidatePath("/admin/sizes");
-    return { success: "Size created." };
+    return { success: await msg("تم إنشاء الحجم بنجاح.", "Size created.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not create size.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر إنشاء الحجم.", "Could not create size.")
+      )
+    };
   }
 }
 
@@ -162,7 +228,7 @@ export async function updateOrderStatusAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.ORDERS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.ORDERS_MANAGE);
     const parsed = orderStatusInputSchema.parse({
       status: value(formData, "status"),
       note: value(formData, "note")
@@ -174,19 +240,25 @@ export async function updateOrderStatusAction(
       adminUserId: admin.id
     });
     revalidatePath("/admin/orders");
-    return { success: "Order status updated." };
+    return { success: await msg("تم تحديث حالة الطلب.", "Order status updated.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not update order.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر تحديث الطلب.", "Could not update order.")
+      )
+    };
   }
 }
 
-export async function updateSettingsAction(  _state: ActionState,
+export async function updateSettingsAction(
+  _state: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.SETTINGS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.SETTINGS_MANAGE);
     const parsed = storeSettingsSchema.parse({
       shippingFlatRate: value(formData, "shippingFlatRate"),
       freeShippingThreshold: value(formData, "freeShippingThreshold"),
@@ -224,10 +296,15 @@ export async function updateSettingsAction(  _state: ActionState,
     });
     revalidatePath("/");
     revalidatePath("/admin/settings");
-    return { success: "Settings updated." };
+    return { success: await msg("تم حفظ الإعدادات بنجاح.", "Settings updated.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not update settings.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر تحديث الإعدادات.", "Could not update settings.")
+      )
+    };
   }
 }
 
@@ -246,16 +323,11 @@ export async function updateCategoryAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = categoryInputSchema.parse({
-      name: value(formData, "name"),
-      slug: value(formData, "slug"),
-      description: value(formData, "description"),
-      imageUrl: value(formData, "imageUrl"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.category.update({
+      where: { id: idValue(formData) },
+      data: parseCategoryData(formData)
     });
-    const row = await prisma.category.update({ where: { id: idValue(formData) }, data: parsed });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -264,12 +336,18 @@ export async function updateCategoryAction(
         entityId: row.id
       }
     });
+    revalidatePath("/");
     revalidatePath("/admin/categories");
     revalidatePath("/products");
-    return { success: "Category updated." };
+    return { success: await msg("تم تحديث الفئة بنجاح.", "Category updated.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not update category.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر تحديث الفئة.", "Could not update category.")
+      )
+    };
   }
 }
 
@@ -279,10 +357,17 @@ export async function deleteCategoryAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
     const id = idValue(formData);
     const used = await prisma.product.count({ where: { categoryId: id } });
-    if (used > 0) return { error: "Category has products and cannot be deleted." };
+    if (used > 0) {
+      return {
+        error: await msg(
+          "الفئة تحتوي على منتجات ولا يمكن حذفها.",
+          "Category has products and cannot be deleted."
+        )
+      };
+    }
     await prisma.category.delete({ where: { id } });
     await prisma.auditLog.create({
       data: {
@@ -294,9 +379,14 @@ export async function deleteCategoryAction(
     });
     revalidatePath("/admin/categories");
     revalidatePath("/products");
-    return { success: "Category deleted." };
+    return { success: await msg("تم حذف الفئة.", "Category deleted.") };
   } catch (error) {
-    return { error: await safeErrorMessage(error, "Could not delete category.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حذف الفئة.", "Could not delete category.")
+      )
+    };
   }
 }
 
@@ -306,14 +396,11 @@ export async function updateColorAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = colorInputSchema.parse({
-      name: value(formData, "name"),
-      hexCode: value(formData, "hexCode"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.color.update({
+      where: { id: idValue(formData) },
+      data: parseColorData(formData)
     });
-    const row = await prisma.color.update({ where: { id: idValue(formData) }, data: parsed });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -323,10 +410,16 @@ export async function updateColorAction(
       }
     });
     revalidatePath("/admin/colors");
-    return { success: "Color updated." };
+    revalidatePath("/products");
+    return { success: await msg("تم تحديث اللون بنجاح.", "Color updated.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not update color.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر تحديث اللون.", "Could not update color.")
+      )
+    };
   }
 }
 
@@ -336,10 +429,17 @@ export async function deleteColorAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
     const id = idValue(formData);
     const used = await prisma.productColor.count({ where: { colorId: id } });
-    if (used > 0) return { error: "Color is used by products and cannot be deleted." };
+    if (used > 0) {
+      return {
+        error: await msg(
+          "هذا اللون مستخدم في منتجات ولا يمكن حذفه.",
+          "Color is used by products and cannot be deleted."
+        )
+      };
+    }
     await prisma.color.delete({ where: { id } });
     await prisma.auditLog.create({
       data: {
@@ -350,9 +450,14 @@ export async function deleteColorAction(
       }
     });
     revalidatePath("/admin/colors");
-    return { success: "Color deleted." };
+    return { success: await msg("تم حذف اللون.", "Color deleted.") };
   } catch (error) {
-    return { error: await safeErrorMessage(error, "Could not delete color.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حذف اللون.", "Could not delete color.")
+      )
+    };
   }
 }
 
@@ -362,13 +467,11 @@ export async function updateSizeAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = sizeInputSchema.parse({
-      name: value(formData, "name"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.size.update({
+      where: { id: idValue(formData) },
+      data: parseSizeData(formData)
     });
-    const row = await prisma.size.update({ where: { id: idValue(formData) }, data: parsed });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -378,10 +481,16 @@ export async function updateSizeAction(
       }
     });
     revalidatePath("/admin/sizes");
-    return { success: "Size updated." };
+    revalidatePath("/products");
+    return { success: await msg("تم تحديث الحجم بنجاح.", "Size updated.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not update size.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر تحديث الحجم.", "Could not update size.")
+      )
+    };
   }
 }
 
@@ -391,10 +500,17 @@ export async function deleteSizeAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
     const id = idValue(formData);
     const used = await prisma.productSize.count({ where: { sizeId: id } });
-    if (used > 0) return { error: "Size is used by products and cannot be deleted." };
+    if (used > 0) {
+      return {
+        error: await msg(
+          "هذا الحجم مستخدم في منتجات ولا يمكن حذفه.",
+          "Size is used by products and cannot be deleted."
+        )
+      };
+    }
     await prisma.size.delete({ where: { id } });
     await prisma.auditLog.create({
       data: {
@@ -405,9 +521,14 @@ export async function deleteSizeAction(
       }
     });
     revalidatePath("/admin/sizes");
-    return { success: "Size deleted." };
+    return { success: await msg("تم حذف الحجم.", "Size deleted.") };
   } catch (error) {
-    return { error: await safeErrorMessage(error, "Could not delete size.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حذف الحجم.", "Could not delete size.")
+      )
+    };
   }
 }
 
@@ -417,16 +538,11 @@ export async function updateAddonAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
-    const parsed = addonInputSchema.parse({
-      name: value(formData, "name"),
-      description: value(formData, "description"),
-      price: value(formData, "price"),
-      imageUrl: value(formData, "imageUrl"),
-      active: checkbox(formData, "active"),
-      sortOrder: Number(value(formData, "sortOrder") || 0)
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
+    const row = await prisma.addon.update({
+      where: { id: idValue(formData) },
+      data: parseAddonData(formData)
     });
-    const row = await prisma.addon.update({ where: { id: idValue(formData) }, data: parsed });
     await prisma.auditLog.create({
       data: {
         adminUserId: admin.id,
@@ -436,10 +552,16 @@ export async function updateAddonAction(
       }
     });
     revalidatePath("/admin/addons");
-    return { success: "Add-on updated." };
+    revalidatePath("/products");
+    return { success: await msg("تم تحديث الإضافة بنجاح.", "Add-on updated.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not update add-on.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر تحديث الإضافة.", "Could not update add-on.")
+      )
+    };
   }
 }
 
@@ -449,10 +571,17 @@ export async function deleteAddonAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
     const id = idValue(formData);
     const used = await prisma.productAddon.count({ where: { addonId: id } });
-    if (used > 0) return { error: "Add-on is used by products and cannot be deleted." };
+    if (used > 0) {
+      return {
+        error: await msg(
+          "هذه الإضافة مستخدمة في منتجات ولا يمكن حذفها.",
+          "Add-on is used by products and cannot be deleted."
+        )
+      };
+    }
     await prisma.addon.delete({ where: { id } });
     await prisma.auditLog.create({
       data: {
@@ -463,9 +592,14 @@ export async function deleteAddonAction(
       }
     });
     revalidatePath("/admin/addons");
-    return { success: "Add-on deleted." };
+    return { success: await msg("تم حذف الإضافة.", "Add-on deleted.") };
   } catch (error) {
-    return { error: await safeErrorMessage(error, "Could not delete add-on.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حذف الإضافة.", "Could not delete add-on.")
+      )
+    };
   }
 }
 
@@ -475,7 +609,7 @@ export async function upsertCouponAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.MARKETING_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.MARKETING_MANAGE);
     const parsed = couponInputSchema.parse({
       code: value(formData, "code").toUpperCase(),
       type: value(formData, "type"),
@@ -512,10 +646,19 @@ export async function upsertCouponAction(
     revalidatePath("/admin/coupons");
     revalidatePath("/cart");
     revalidatePath("/checkout");
-    return { success: id ? "Coupon updated." : "Coupon created." };
+    return {
+      success: id
+        ? await msg("تم تحديث الكوبون بنجاح.", "Coupon updated.")
+        : await msg("تم إنشاء الكوبون بنجاح.", "Coupon created.")
+    };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not save coupon.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حفظ الكوبون.", "Could not save coupon.")
+      )
+    };
   }
 }
 
@@ -525,7 +668,7 @@ export async function deleteCouponAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.MARKETING_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.MARKETING_MANAGE);
     const id = idValue(formData);
     await prisma.coupon.delete({ where: { id } });
     await prisma.auditLog.create({
@@ -537,9 +680,14 @@ export async function deleteCouponAction(
       }
     });
     revalidatePath("/admin/coupons");
-    return { success: "Coupon deleted." };
+    return { success: await msg("تم حذف الكوبون.", "Coupon deleted.") };
   } catch (error) {
-    return { error: await safeErrorMessage(error, "Could not delete coupon.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حذف الكوبون.", "Could not delete coupon.")
+      )
+    };
   }
 }
 
@@ -549,11 +697,11 @@ export async function upsertShippingRateAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.SETTINGS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.SETTINGS_MANAGE);
     const { GOVERNORATES } = await import("@/lib/governorates");
     const governorate = value(formData, "governorate");
     if (!(GOVERNORATES as readonly string[]).includes(governorate)) {
-      return { error: "Unknown governorate." };
+      return { error: await msg("محافظة غير معروفة.", "Unknown governorate.") };
     }
     const parsed = shippingRateInputSchema.parse({
       governorate,
@@ -576,19 +724,25 @@ export async function upsertShippingRateAction(
     });
     revalidatePath("/admin/settings");
     revalidatePath("/checkout");
-    return { success: "Shipping rate saved." };
+    return { success: await msg("تم حفظ سعر الشحن.", "Shipping rate saved.") };
   } catch (error) {
     if (error instanceof z.ZodError) return { error: error.issues[0]?.message };
-    return { error: await safeErrorMessage(error, "Could not save shipping rate.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حفظ سعر الشحن.", "Could not save shipping rate.")
+      )
+    };
   }
 }
 
-export async function approveReviewAction(  _state: ActionState,
+export async function approveReviewAction(
+  _state: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
     const id = idValue(formData);
     const review = await prisma.review.update({
       where: { id },
@@ -605,9 +759,14 @@ export async function approveReviewAction(  _state: ActionState,
     });
     revalidatePath("/admin/reviews");
     revalidatePath(`/products/${review.product.slug}`);
-    return { success: "Review approved." };
+    return { success: await msg("تم اعتماد التقييم.", "Review approved.") };
   } catch (error) {
-    return { error: await safeErrorMessage(error, "Could not approve review.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر اعتماد التقييم.", "Could not approve review.")
+      )
+    };
   }
 }
 
@@ -617,7 +776,7 @@ export async function deleteReviewAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.PRODUCTS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.PRODUCTS_MANAGE);
     const id = idValue(formData);
     await prisma.review.delete({ where: { id } });
     await prisma.auditLog.create({
@@ -629,9 +788,14 @@ export async function deleteReviewAction(
       }
     });
     revalidatePath("/admin/reviews");
-    return { success: "Review deleted." };
+    return { success: await msg("تم حذف التقييم.", "Review deleted.") };
   } catch (error) {
-    return { error: await safeErrorMessage(error, "Could not delete review.") };
+    return {
+      error: await safeErrorMessage(
+        error,
+        await msg("تعذر حذف التقييم.", "Could not delete review.")
+      )
+    };
   }
 }
 
@@ -641,7 +805,7 @@ export async function updateOrderCustomerAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.ORDERS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.ORDERS_MANAGE);
     const parsed = orderCustomerEditSchema.parse({
       customerName: value(formData, "customerName"),
       phone: value(formData, "phone"),
@@ -658,9 +822,12 @@ export async function updateOrderCustomerAction(
     await updateOrderCustomer({ orderId, adminUserId: admin.id, ...parsed });
     revalidatePath("/admin/orders");
     revalidatePath(`/admin/orders/${orderId}`);
-    return { success: "Order updated." };
+    return { success: await msg("تم تحديث بيانات الطلب.", "Order updated.") };
   } catch (error) {
-    return await adminError(error, "Could not update order.");
+    return await adminError(
+      error,
+      await msg("تعذر تحديث الطلب.", "Could not update order.")
+    );
   }
 }
 
@@ -670,7 +837,7 @@ export async function updateOrderItemAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.ORDERS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.ORDERS_MANAGE);
     const parsed = orderItemEditSchema.parse({
       itemId: value(formData, "itemId"),
       quantity: value(formData, "quantity")
@@ -684,9 +851,12 @@ export async function updateOrderItemAction(
     });
     revalidatePath("/admin/orders");
     revalidatePath(`/admin/orders/${orderId}`);
-    return { success: "Order item updated." };
+    return { success: await msg("تم تحديث عنصر الطلب.", "Order item updated.") };
   } catch (error) {
-    return await adminError(error, "Could not update item.");
+    return await adminError(
+      error,
+      await msg("تعذر تحديث العنصر.", "Could not update item.")
+    );
   }
 }
 
@@ -696,12 +866,17 @@ export async function deleteOrderAction(
 ): Promise<ActionState> {
   try {
     await assertSameOrigin();
-    const admin = await requireAdmin(PERMISSIONS.ORDERS_MANAGE);
+    const admin = await requireAdminApi(PERMISSIONS.ORDERS_MANAGE);
     const orderId = idValue(formData);
     await deleteOrder({ orderId, adminUserId: admin.id });
     revalidatePath("/admin/orders");
-    return { success: "Order deleted and stock restored." };
+    return {
+      success: await msg("تم حذف الطلب واستعادة المخزون.", "Order deleted and stock restored.")
+    };
   } catch (error) {
-    return await adminError(error, "Could not delete order.");
+    return await adminError(
+      error,
+      await msg("تعذر حذف الطلب.", "Could not delete order.")
+    );
   }
 }

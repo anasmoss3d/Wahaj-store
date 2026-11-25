@@ -5,26 +5,62 @@ import { SKU_SUGGESTED } from "@/lib/utils";
 const phoneRegex = /^(\+?2)?01[0125][0-9]{8}$/;
 const hexRegex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
+export function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+export function normalizeEgyptianPhone(phone: string) {
+  const trimmed = phone.trim();
+  if (trimmed.startsWith("+2")) return trimmed.slice(2);
+  if (trimmed.startsWith("20") && trimmed.length === 12) return trimmed.slice(1);
+  return trimmed;
+}
+
+const strongPasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters long.")
+  .max(72, "Password must be at most 72 characters.")
+  .refine(
+    (value) => Buffer.byteLength(value, "utf8") <= 72,
+    "Password must be at most 72 bytes."
+  );
+
 export const idSchema = z.string().min(8).max(64);
 
 export const loginSchema = z.object({
-  email: z.string().email().max(190),
-  password: z.string().min(8).max(200)
-});
-
-// Customer sign-in accepts either an email OR an Egyptian mobile number,
-// matching how accounts are looked up in `customerLoginAction`.
-export const customerLoginSchema = z.object({
-  email: z.union([z.string().email().max(190), z.string().regex(phoneRegex)]),
-  password: z.string().min(8).max(200)
+  identifier: z
+    .string()
+    .trim()
+    .min(3)
+    .max(190)
+    .refine(
+      (value) => z.string().email().safeParse(value).success || phoneRegex.test(value),
+      "Enter a valid email or Egyptian mobile number."
+    ),
+  password: z.string().min(1).max(200)
 });
 
 export const registerSchema = z.object({
-  name: z.string().min(2).max(120),
-  phone: z.string().regex(phoneRegex, "Enter a valid Egyptian mobile number."),
-  email: z.string().email().max(190).optional().or(z.literal("")),
-  password: z.string().min(8).max(200)
+  name: z.string().trim().min(2).max(120),
+  phone: z.string().trim().regex(phoneRegex, "Enter a valid Egyptian mobile number."),
+  email: z.string().trim().email().max(190).optional().or(z.literal("")),
+  password: strongPasswordSchema
 });
+
+export const resetPasswordRequestSchema = z.object({
+  email: z.string().trim().email("Enter a valid email address.").max(190)
+});
+
+export const resetPasswordConfirmSchema = z
+  .object({
+    token: z.string().trim().min(20).max(200),
+    password: strongPasswordSchema,
+    confirmPassword: z.string().min(1).max(200)
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"]
+  });
 
 export const addToCartSchema = z.object({
   productId: idSchema,
@@ -59,8 +95,10 @@ export const checkoutSchema = z.object({
 
 export const categoryInputSchema = z.object({
   name: z.string().min(2).max(120),
+  nameEn: z.string().max(120).optional().or(z.literal("")),
   slug: z.string().min(2).max(160),
   description: z.string().max(400).optional().or(z.literal("")),
+  descriptionEn: z.string().max(400).optional().or(z.literal("")),
   imageUrl: z.string().url().optional().or(z.literal("")),
   active: z.boolean().default(true),
   sortOrder: z.number().int().default(0)
@@ -68,6 +106,7 @@ export const categoryInputSchema = z.object({
 
 export const colorInputSchema = z.object({
   name: z.string().min(2).max(80),
+  nameEn: z.string().max(80).optional().or(z.literal("")),
   hexCode: z.string().regex(hexRegex),
   active: z.boolean().default(true),
   sortOrder: z.number().int().default(0)
@@ -75,13 +114,16 @@ export const colorInputSchema = z.object({
 
 export const sizeInputSchema = z.object({
   name: z.string().min(2).max(80),
+  nameEn: z.string().max(80).optional().or(z.literal("")),
   active: z.boolean().default(true),
   sortOrder: z.number().int().default(0)
 });
 
 export const addonInputSchema = z.object({
   name: z.string().min(2).max(120),
+  nameEn: z.string().max(120).optional().or(z.literal("")),
   description: z.string().max(500).optional().or(z.literal("")),
+  descriptionEn: z.string().max(500).optional().or(z.literal("")),
   price: z.coerce.number().min(0).max(999999),
   imageUrl: z.string().optional().or(z.literal("")),
   active: z.boolean().default(true),
@@ -90,8 +132,10 @@ export const addonInputSchema = z.object({
 
 export const adminProductSchema = z.object({
   name: z.string().min(2).max(160),
+  nameEn: z.string().max(160).optional().or(z.literal("")),
   slug: z.string().max(180).optional(),
   description: z.string().min(12).max(4000),
+  descriptionEn: z.string().max(4000).optional().or(z.literal("")),
   basePrice: z.coerce.number().min(1).max(999999),
   categoryId: idSchema,
   mainImage: z.string().min(1).max(500),
@@ -108,13 +152,16 @@ export const adminProductSchema = z.object({
   bestSeller: z.boolean().default(false),
   sortOrder: z.coerce.number().int().default(0),
   seoTitle: z.string().max(180).optional().or(z.literal("")),
+  seoTitleEn: z.string().max(180).optional().or(z.literal("")),
   metaDescription: z.string().max(300).optional().or(z.literal("")),
+  metaDescriptionEn: z.string().max(300).optional().or(z.literal("")),
   canonicalUrl: z.string().url().optional().or(z.literal("")),
   gallery: z
     .array(
       z.object({
         url: z.string().min(1).max(500),
         alt: z.string().max(180).optional().or(z.literal("")),
+        altEn: z.string().max(180).optional().or(z.literal("")),
         sortOrder: z.coerce.number().int().default(0)
       })
     )

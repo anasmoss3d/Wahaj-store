@@ -7,7 +7,7 @@ import { StorefrontHeader } from "@/components/storefront/header";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, getLocale, isCustomColorName, pickLocalized } from "@/lib/i18n";
 import { productJsonLd } from "@/lib/seo";
 import { getProductColorImageUrl } from "@/lib/product-images";
 
@@ -41,17 +41,24 @@ async function getProduct(slug: string) {
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, locale] = await Promise.all([params, getLocale()]);
   const product = await prisma.product.findUnique({ where: { slug } });
   if (!product) return {};
 
+  const title =
+    pickLocalized(locale, product.seoTitle, product.seoTitleEn) ||
+    pickLocalized(locale, product.name, product.nameEn);
+  const description =
+    pickLocalized(locale, product.metaDescription, product.metaDescriptionEn) ||
+    pickLocalized(locale, product.description, product.descriptionEn).slice(0, 155);
+
   return {
-    title: product.seoTitle || product.name,
-    description: product.metaDescription || product.description.slice(0, 155),
+    title,
+    description,
     alternates: product.canonicalUrl ? { canonical: product.canonicalUrl } : undefined,
     openGraph: {
-      title: product.seoTitle || product.name,
-      description: product.metaDescription || product.description.slice(0, 155),
+      title,
+      description,
       images: [product.mainImage]
     }
   };
@@ -59,10 +66,11 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function ProductPage({ params }: { params: Params }) {
   const { slug } = await params;
-  const [product, user, dict] = await Promise.all([
+  const [product, user, dict, locale] = await Promise.all([
     getProduct(slug),
     getCurrentUser(),
-    getDictionary()
+    getDictionary(),
+    getLocale()
   ]);
   if (!product) notFound();
 
@@ -84,28 +92,39 @@ export default async function ProductPage({ params }: { params: Params }) {
       : null
   ]);
 
-  const jsonLd = productJsonLd(product);
+  const productName = pickLocalized(locale, product.name, product.nameEn);
+  const productDescription = pickLocalized(locale, product.description, product.descriptionEn);
+  const categoryName = pickLocalized(locale, product.category.name, product.category.nameEn);
+  const jsonLd = productJsonLd(product, locale);
   const avg = ratingAgg._avg.rating ?? 0;
   const reviewCount = ratingAgg._count.rating;
   const colorOptions = product.colors.map((item) => ({
     id: item.id,
-    name: item.color.name,
+    name: pickLocalized(locale, item.color.name, item.color.nameEn),
     hexCode: item.color.hexCode,
     additionalPrice: Number(item.additionalPrice),
-    imageUrl: getProductColorImageUrl(product.slug, item.color.name, item.imageUrl)
+    isCustomColor: isCustomColorName(item.color.name, item.color.nameEn),
+    imageUrl: getProductColorImageUrl(
+      product.slug,
+      item.color.nameEn ?? item.color.name,
+      item.imageUrl
+    )
   }));
   const sizeOptions = product.sizes.map((item) => ({
     id: item.id,
-    name: item.size.name,
+    name: pickLocalized(locale, item.size.name, item.size.nameEn),
     price: Number(item.price)
   }));
   const galleryImages = [
-    { url: product.mainImage, alt: product.name },
-    ...product.images.map((image) => ({ url: image.url, alt: image.alt || product.name })),
+    { url: product.mainImage, alt: productName },
+    ...product.images.map((image) => ({
+      url: image.url,
+      alt: pickLocalized(locale, image.alt, image.altEn) || productName
+    })),
     ...(product.slug.trim().toLowerCase() === "vase"
       ? colorOptions.map((color) => ({
           url: color.imageUrl,
-          alt: `${product.name} in ${color.name}`
+          alt: `${productName} - ${color.name}`
         }))
       : [])
   ];
@@ -113,11 +132,11 @@ export default async function ProductPage({ params }: { params: Params }) {
   return (
     <>
       <StorefrontHeader />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-10">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12 py-10 sm:py-14">
         <ProductCustomizer
           product={{
             id: product.id,
-            name: product.name,
+            name: productName,
             basePrice: Number(product.basePrice)
           }}
           action={
@@ -132,12 +151,13 @@ export default async function ProductPage({ params }: { params: Params }) {
           sizes={sizeOptions}
           addons={product.addons.map((item) => ({
             id: item.id,
-            name: item.addon.name,
-            description: item.addon.description,
+            name: pickLocalized(locale, item.addon.name, item.addon.nameEn),
+            description: pickLocalized(locale, item.addon.description, item.addon.descriptionEn),
             price: Number(item.addon.price),
             imageUrl: item.addon.imageUrl
           }))}
           images={galleryImages}
+          locale={locale}
           labels={{
             madeToOrder: dict.madeToOrder,
             startsAt: dict.startsAt,
@@ -157,49 +177,50 @@ export default async function ProductPage({ params }: { params: Params }) {
             productPhotos: dict.productPhotos
           }}
         />
-        <section className="mt-12 grid gap-8 lg:grid-cols-[1fr_320px]">
-          <div className="prose max-w-none">
-            <h2 className="text-2xl font-bold text-concrete-900">{dict.details}</h2>
-            <p className="mt-3 leading-8 text-concrete-700">{product.description}</p>
+        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_320px]">
+          <div className="rounded-2xl border border-[#E5DDD0] bg-[#FAF8F5] p-6 sm:p-8">
+            <h2 className="font-editorial text-2xl sm:text-3xl font-black text-[#1C1917]">{dict.details}</h2>
+            <p className="mt-3 text-sm sm:text-base leading-relaxed text-[#57534E] font-light">{productDescription}</p>
           </div>
-          <aside className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft">
-            <p className="text-sm font-semibold text-concrete-500">{dict.category}</p>
-            <p className="mt-1 text-lg font-bold text-concrete-900">{product.category.name}</p>
-            <p className="mt-5 text-sm font-semibold text-concrete-500">SKU</p>
-            <p className="mt-1 text-lg font-bold text-concrete-900">{product.sku}</p>
+          <aside className="rounded-2xl border border-[#E5DDD0] bg-white p-6 shadow-[0_16px_38px_-18px_rgba(28,25,23,0.08)] h-fit">
+            <p className="text-xs font-medium text-[#8C827A]">{dict.category}</p>
+            <p className="mt-1 font-editorial text-lg font-bold text-[#1C1917]">{categoryName}</p>
+            <div className="my-4 h-px bg-[#EDE8E0]" />
+            <p className="text-xs font-medium text-[#8C827A]">SKU</p>
+            <p className="mt-1 text-sm font-mono font-semibold text-[#1C1917]">{product.sku}</p>
           </aside>
         </section>
 
-        <section className="mt-12 grid gap-8 lg:grid-cols-[1fr_420px]">
+        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_420px]">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-bold text-concrete-900">{dict.reviews}</h2>
+              <h2 className="font-editorial text-2xl sm:text-3xl font-black text-[#1C1917]">{dict.reviews}</h2>
               {reviewCount > 0 ? (
-                <span className="inline-flex items-center gap-2 text-sm text-concrete-600">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#E5DDD0] bg-white px-3.5 py-1 text-xs font-medium text-[#57534E]">
                   <Stars value={Math.round(avg)} />
-                  {avg.toFixed(1)} · {reviewCount}
+                  <span>{avg.toFixed(1)} · {reviewCount}</span>
                 </span>
               ) : null}
             </div>
             <div className="mt-5 grid gap-4">
               {reviews.length === 0 ? (
-                <p className="rounded-md border border-concrete-100 bg-white p-5 text-sm text-concrete-600">
+                <p className="rounded-2xl border border-[#E5DDD0] bg-white p-6 text-sm text-[#78716C] font-light">
                   {dict.noReviews}
                 </p>
               ) : (
                 reviews.map((review) => (
                   <article
-                    className="rounded-md border border-concrete-100 bg-white p-5 shadow-soft"
+                    className="rounded-2xl border border-[#E5DDD0] bg-white p-5 sm:p-6 shadow-[0_16px_38px_-18px_rgba(28,25,23,0.08)]"
                     key={review.id}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-bold text-concrete-900">{review.name}</p>
+                      <span className="font-editorial text-base font-bold text-[#1C1917]">{review.name}</span>
                       <Stars value={review.rating} />
                     </div>
                     {review.title ? (
-                      <p className="mt-2 font-semibold text-concrete-800">{review.title}</p>
+                      <p className="mt-2 text-sm font-semibold text-[#1C1917]">{review.title}</p>
                     ) : null}
-                    <p className="mt-2 text-sm leading-7 text-concrete-600">{review.body}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-[#665E57] font-light">{review.body}</p>
                   </article>
                 ))
               )}

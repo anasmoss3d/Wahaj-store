@@ -3,10 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BellRing } from "lucide-react";
+import { useAdminI18n } from "@/components/admin/admin-i18n-context";
 
 function beep() {
   try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new Ctx();
     [660, 880].forEach((freq, i) => {
       const osc = ctx.createOscillator();
@@ -27,6 +30,7 @@ export function OrdersAutoRefresh({ initialLatestAt }: { initialLatestAt: string
   const router = useRouter();
   const latestRef = useRef(initialLatestAt);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const { locale, dict } = useAdminI18n();
 
   useEffect(() => {
     latestRef.current = initialLatestAt;
@@ -51,10 +55,19 @@ export function OrdersAutoRefresh({ initialLatestAt }: { initialLatestAt: string
     return () => clearInterval(id);
   }, [router]);
 
+  const timeString = lastCheck
+    ? lastCheck.toLocaleTimeString(locale === "ar" ? "ar-EG-u-nu-latn" : "en-EG")
+    : null;
+
   return (
-    <p className="inline-flex items-center gap-2 text-xs text-concrete-500">
-      <BellRing size={14} />
-      Auto-refresh on · {lastCheck ? `checked ${lastCheck.toLocaleTimeString()}` : "watching for new orders"}
+    <p className="inline-flex items-center gap-2 rounded-full border border-[#CBD5C8] bg-[#E7ECE5]/80 px-3.5 py-1.5 text-xs font-medium text-[#2F463B]">
+      <BellRing size={13} className="text-[#B85A2D]" />
+      <span>
+        {dict.orders.autoRefreshPrefix}{" "}
+        {timeString
+          ? `${dict.orders.autoRefreshChecked} ${timeString}`
+          : dict.orders.autoRefreshWatching}
+      </span>
     </p>
   );
 }

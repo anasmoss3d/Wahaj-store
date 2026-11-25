@@ -19,9 +19,13 @@ export function centsToDecimal(cents: number) {
   return new Prisma.Decimal((cents / 100).toFixed(2));
 }
 
-export function formatMoney(value: MoneyInput, currency = "EGP") {
+export function formatMoney(
+  value: MoneyInput,
+  currency = "EGP",
+  locale: "ar" | "en" = "en"
+) {
   const amount = toCents(value) / 100;
-  return new Intl.NumberFormat("en-EG", {
+  return new Intl.NumberFormat(locale === "ar" ? "ar-EG-u-nu-latn" : "en-EG", {
     style: "currency",
     currency,
     maximumFractionDigits: 0

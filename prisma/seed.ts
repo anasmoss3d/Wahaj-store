@@ -75,8 +75,22 @@ async function main() {
     });
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@wahaj.local";
-  const adminPassword = process.env.ADMIN_PASSWORD || "ChangeMe123!";
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@wahaj.local").trim().toLowerCase();
+  const rawAdminPassword = process.env.ADMIN_PASSWORD;
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!rawAdminPassword || rawAdminPassword === "ChangeMe123!")
+  ) {
+    throw new Error("A non-default ADMIN_PASSWORD must be explicitly set in production.");
+  }
+  const adminPassword = rawAdminPassword || "ChangeMe123!";
+  const existingCustomer = await prisma.user.findFirst({
+    where: { email: { equals: adminEmail, mode: "insensitive" } },
+    select: { id: true }
+  });
+  if (existingCustomer) {
+    throw new Error(`Cannot seed admin: customer account already uses ${adminEmail}`);
+  }
   await prisma.adminUser.upsert({
     where: { email: adminEmail },
     update: {
