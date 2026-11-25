@@ -4,6 +4,7 @@ import {
   addToCartSchema,
   checkoutSchema,
   loginSchema,
+  newsletterSubscribeSchema,
   orderStatusInputSchema,
   registerSchema,
   resetPasswordConfirmSchema,
@@ -187,6 +188,21 @@ describe("validators", () => {
         token: "abcdefghijklmnopqrstuvwxyz1234",
         password: "newpassword123",
         confirmPassword: "differentpassword"
+      })
+    ).toThrow();
+  });
+
+  it("normalizes and validates newsletter subscription emails", () => {
+    const parsed = newsletterSubscribeSchema.parse({
+      email: "  Customer@Example.COM ",
+      locale: "ar"
+    });
+    expect(parsed.email).toBe("customer@example.com");
+    expect(parsed.locale).toBe("ar");
+
+    expect(() =>
+      newsletterSubscribeSchema.parse({
+        email: "not-an-email"
       })
     ).toThrow();
   });

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Check, Loader2 } from "lucide-react";
 import type { Locale, Dictionary } from "@/lib/i18n";
 import { useInViewOnce, useScrollVars } from "@/components/storefront/scroll-animations";
 
@@ -14,7 +14,9 @@ export function NewsletterGlow({
 }) {
   const isArabic = locale === "ar";
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const { ref: inViewRef, inView } = useInViewOnce<HTMLDivElement>(0.18);
 
@@ -31,10 +33,49 @@ export function NewsletterGlow({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (email.trim()) {
-      setSubmitted(true);
-      setEmail("");
-    }
+    const trimmed = email.trim();
+    if (!trimmed || isPending) return;
+
+    setErrorMessage(null);
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/newsletter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmed, locale })
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          alreadySubscribed?: boolean;
+          message?: string;
+        } | null;
+
+        if (!response.ok || !payload?.ok) {
+          setErrorMessage(
+            payload?.message ||
+              (isArabic
+                ? "تعذر إتمام الاشتراك حالياً. تأكد من صحة البريد الإلكتروني وحاول مرة أخرى."
+                : "Could not subscribe right now. Please check your email and try again.")
+          );
+          return;
+        }
+
+        setSubmittedMessage(
+          payload.alreadySubscribed
+            ? isArabic
+              ? "أنت مشترك بالفعل في قائمة وهج."
+              : "You're already subscribed to the Wahaj list."
+            : dict.newsletterSuccess || (isArabic ? "مرحباً بك في وهج." : "Welcome to Wahaj.")
+        );
+        setEmail("");
+      } catch {
+        setErrorMessage(
+          isArabic
+            ? "حدث خطأ في الاتصال. حاول مرة أخرى."
+            : "Connection error. Please try again."
+        );
+      }
+    });
   }
 
   return (
@@ -88,27 +129,43 @@ export function NewsletterGlow({
               transitionDelay: "180ms"
             }}
           >
-            {submitted ? (
-              <div className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-medium text-[#1C1917] shadow-sm">
-                <Check size={16} className="text-[#B85A2D]" />
-                <span>{dict.newsletterSuccess || (isArabic ? "مرحباً بك في وهج." : "Welcome to Wahaj.")}</span>
+            {submittedMessage ? (
+              <div
+                aria-live="polite"
+                className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-medium text-[#1C1917] shadow-sm"
+              >
+                <Check size={16} className="shrink-0 text-[#B85A2D]" />
+                <span>{submittedMessage}</span>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={dict.newsletterPlaceholder || "you@example.com"}
-                  className="h-12 w-full sm:w-72 rounded-full border border-white/80 bg-white px-5 text-sm text-[#1C1917] placeholder:text-[#A8A29E] outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#B85A2D]/20 focus:border-[#B85A2D]"
-                />
-                <button
-                  type="submit"
-                  className="h-12 w-full sm:w-auto shrink-0 rounded-full bg-[#B85A2D] px-8 text-sm font-medium text-white shadow-pill transition-all duration-300 hover:bg-[#9E4A22] active:scale-[0.98]"
-                >
-                  {dict.newsletterButton || (isArabic ? "اشترك الآن" : "Join the list")}
-                </button>
+              <form onSubmit={handleSubmit} className="mx-auto max-w-md">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <input
+                    type="email"
+                    required
+                    disabled={isPending}
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    placeholder={dict.newsletterPlaceholder || "you@example.com"}
+                    className="h-12 w-full sm:w-72 rounded-full border border-white/80 bg-white px-5 text-sm text-[#1C1917] placeholder:text-[#A8A29E] outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#B85A2D]/20 focus:border-[#B85A2D] disabled:opacity-60"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="inline-flex h-12 w-full sm:w-auto shrink-0 items-center justify-center gap-2 rounded-full bg-[#B85A2D] px-8 text-sm font-medium text-white shadow-pill transition-all duration-300 hover:bg-[#9E4A22] active:scale-[0.98] disabled:opacity-65"
+                  >
+                    {isPending ? <Loader2 size={16} className="animate-spin" /> : null}
+                    <span>{dict.newsletterButton || (isArabic ? "اشترك الآن" : "Join the list")}</span>
+                  </button>
+                </div>
+                {errorMessage ? (
+                  <p role="alert" className="mt-3 text-xs font-medium text-red-800">
+                    {errorMessage}
+                  </p>
+                ) : null}
               </form>
             )}
           </div>

@@ -51,6 +51,16 @@ export const resetPasswordRequestSchema = z.object({
   email: z.string().trim().email("Enter a valid email address.").max(190)
 });
 
+export const newsletterSubscribeSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address.")
+    .max(190)
+    .transform(normalizeEmail),
+  locale: z.enum(["ar", "en"]).default("ar")
+});
+
 export const resetPasswordConfirmSchema = z
   .object({
     token: z.string().trim().min(20).max(200),

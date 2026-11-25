@@ -72,3 +72,51 @@ export async function sendPasswordResetEmail(input: {
 
   throw new AppError("Password reset email delivery is not configured.");
 }
+
+export async function sendNewsletterWelcomeEmail(input: {
+  to: string;
+  locale: Locale;
+}) {
+  if (!isPasswordResetEmailConfigured()) {
+    if (isLocalDevResetAllowed()) {
+      console.info(`[Wahaj Dev] Newsletter subscription saved for ${input.to}`);
+    }
+    return false;
+  }
+
+  const apiKey = process.env.RESEND_API_KEY!.trim();
+  const from = process.env.EMAIL_FROM!.trim();
+  const isArabic = input.locale === "ar";
+  const subject = isArabic
+    ? "مرحباً بك في قائمة وهج"
+    : "Welcome to Wahaj";
+  const heading = isArabic ? "مرحباً بك في وهج" : "Welcome to Wahaj";
+  const bodyText = isArabic
+    ? "شكراً لانضمامك إلى قائمتنا البريدية. ستصلك أحدث العطور الحصرية ومواعيد التوفر وعروض وهج فور إطلاقها."
+    : "Thank you for joining the Wahaj list. You'll be the first to hear about new botanical scents, restocks, and seasonal releases.";
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from,
+      to: [input.to],
+      subject,
+      text: `${heading}\n\n${bodyText}`,
+      html: `
+        <div style="font-family:Inter,Arial,sans-serif;background:#F7F4EE;padding:32px;color:#1C1917;" dir="${isArabic ? "rtl" : "ltr"}">
+          <div style="max-width:480px;margin:0 auto;background:#FFFFFF;border:1px solid #E5DDD0;border-radius:20px;padding:32px;">
+            <h1 style="margin:0 0 12px;font-size:24px;color:#1C1917;">${heading}</h1>
+            <p style="margin:0;font-size:14px;line-height:1.7;color:#57534E;">${bodyText}</p>
+          </div>
+        </div>
+      `
+    }),
+    signal: AbortSignal.timeout(8000)
+  });
+
+  return res.ok;
+}
