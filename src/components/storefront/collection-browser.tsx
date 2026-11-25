@@ -168,8 +168,8 @@ export function CollectionBrowser({ products, locale, dict }: Props) {
           })}
         </div>
 
-        {/* Compact Curated Product Grid (2 rows on desktop, expandable or browsable via /products) */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-7 sm:gap-x-7 sm:gap-y-10">
+        {/* Compact Curated Product Shelf on Mobile, Grid on Tablet/Desktop */}
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-x-7 sm:gap-y-10 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 scroll-px-4 pb-2 sm:pb-0">
           {visibleProducts.map((p, idx) => {
             const displayName = pickLocalized(locale, p.name, p.nameEn);
             const imageSrc = p.mainImage || "/brand/hero-candle.jpg";
@@ -179,7 +179,7 @@ export function CollectionBrowser({ products, locale, dict }: Props) {
               <Link
                 key={p.id}
                 href={`/products/${p.slug}`}
-                className="group block transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                className="group block shrink-0 w-[66vw] max-w-[260px] sm:w-auto sm:max-w-none snap-start sm:snap-align-none transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{
                   opacity: inView ? 1 : 0,
                   transform: inView ? "translateY(0)" : "translateY(18px)",

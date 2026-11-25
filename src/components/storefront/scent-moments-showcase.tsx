@@ -216,8 +216,11 @@ export function ScentMomentsShowcase({
           </Link>
         </div>
 
-        {/* 3 Editorial Product Cards Grid with Curtain Reveal & Center Parallax */}
-        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
+        {/* 3 Editorial Product Cards: Horizontal Snap Shelf on Mobile, 3-Col Grid on Desktop */}
+        <div
+          ref={cardsRef}
+          className="flex md:grid md:grid-cols-3 gap-5 md:gap-8 lg:gap-10 overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none no-scrollbar -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 scroll-px-4 sm:scroll-px-6 pb-2 md:pb-0"
+        >
           {items.map((item, idx) => {
             const isAdded = addedId === item.id;
             const isAdding = addingId === item.id;
@@ -228,13 +231,9 @@ export function ScentMomentsShowcase({
             return (
               <div
                 key={item.id}
-                className="group flex flex-col will-change-transform"
-                style={{
-                  transform:
-                    idx === 1
-                      ? "translate3d(0, calc(var(--cards-p, 0) * -28px), 0)"
-                      : undefined
-                }}
+                className={`group flex flex-col shrink-0 w-[78vw] max-w-[330px] sm:w-[46vw] sm:max-w-none md:w-auto snap-start md:snap-align-none md:will-change-transform ${
+                  idx === 1 ? "md:[transform:translate3d(0,calc(var(--cards-p,0)*-28px),0)]" : ""
+                }`}
               >
                 {/* Photo Card with Vertical Curtain Clip-Path Reveal & Image Reverse Zoom */}
                 <Link

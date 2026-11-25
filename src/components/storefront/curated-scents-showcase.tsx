@@ -144,8 +144,8 @@ export function CuratedScentsShowcase({
           </Link>
         </div>
 
-        {/* 6 High-End Candle Cards with Staggered Reveal & Center-Column Scroll Parallax */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+        {/* 6 High-End Candle Cards: Horizontal Snap Shelf on Mobile, Grid on Tablet/Desktop */}
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-x-8 sm:gap-y-12 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 scroll-px-4 pb-2 sm:pb-0">
           {items.map((item, idx) => {
             const title = isArabic ? item.nameAr : item.nameEn;
             const notes = isArabic ? item.notesAr : item.notesEn;
@@ -154,14 +154,11 @@ export function CuratedScentsShowcase({
             return (
               <div
                 key={item.id}
-                className={isMiddleCol ? "lg:will-change-transform" : undefined}
-                style={
+                className={`shrink-0 w-[76vw] max-w-[310px] sm:w-auto sm:max-w-none snap-start sm:snap-align-none ${
                   isMiddleCol
-                    ? {
-                        transform: "translate3d(0, calc(var(--col-offset, 0) * -22px), 0)"
-                      }
-                    : undefined
-                }
+                    ? "lg:will-change-transform lg:[transform:translate3d(0,calc(var(--col-offset,0)*-22px),0)]"
+                    : ""
+                }`}
               >
                 <Link
                   href={`/products/${item.slug}`}
