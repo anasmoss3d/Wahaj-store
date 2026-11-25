@@ -1,21 +1,34 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { normalizeDatabaseUrl } from "@/lib/db-url";
+import { describeDatabaseTarget } from "@/lib/db-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-function classifyDbError(error: unknown): { code: string | null; hint: string } {
+function classifyInitError(message: string): string {
+  if (/environment variable not found/i.test(message)) return "missing_env";
+  if (/authentication failed|password/i.test(message)) return "auth_failed";
+  if (/can't reach database server|timed out|enotfound|econnrefused|network/i.test(message)) {
+    return "unreachable";
+  }
+  if (/ssl|tls|certificate/i.test(message)) return "tls_error";
+  if (/maxclients|too many clients|pool/i.test(message)) return "pool_exhausted";
+  return "init_error";
+}
+
+function classifyDbError(error: unknown): { code: string | null; reason: string; hint: string } {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2021" || error.code === "P2022") {
       return {
         code: error.code,
+        reason: "schema_drift",
         hint: "Database schema is behind migrations. Run prisma migrate deploy against DIRECT_URL (use Supabase IPv4 session pooler port 5432 on Vercel)."
       };
     }
     return {
       code: error.code,
+      reason: "query_error",
       hint: "Prisma query failed against Postgres."
     };
   }
@@ -23,7 +36,8 @@ function classifyDbError(error: unknown): { code: string | null; hint: string } 
   if (error instanceof Prisma.PrismaClientInitializationError) {
     return {
       code: error.errorCode ?? "INIT_ERROR",
-      hint: "Cannot connect to Postgres. Check DATABASE_URL pooling params (?pgbouncer=true on port 6543) and verify the database server is reachable."
+      reason: classifyInitError(error.message),
+      hint: "Cannot connect to Postgres. Verify DATABASE_URL is configured for this environment and uses an IPv4-reachable endpoint."
     };
   }
 
@@ -31,19 +45,22 @@ function classifyDbError(error: unknown): { code: string | null; hint: string } 
   if (message.includes("prepared statement")) {
     return {
       code: "PGBOUNCER_PREPARED_STATEMENT",
+      reason: "prepared_statement",
       hint: "Transaction pooler prepared-statement conflict. Ensure ?pgbouncer=true is enabled on DATABASE_URL."
     };
   }
 
   return {
     code: null,
+    reason: "unknown",
     hint: "Unexpected database error."
   };
 }
 
 export async function GET() {
-  const normalizedUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
-  const pgbouncerMode = normalizedUrl?.includes("pgbouncer=true") ?? false;
+  const target = describeDatabaseTarget(process.env.DATABASE_URL);
+  const directConfigured = Boolean(process.env.DIRECT_URL?.trim());
+  const vercelEnv = process.env.VERCEL_ENV ?? null;
 
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -56,7 +73,9 @@ export async function GET() {
       ok: true,
       database: "connected",
       schema: "ready",
-      pgbouncerMode
+      vercelEnv,
+      directConfigured,
+      ...target
     });
   } catch (error) {
     const info = classifyDbError(error);
@@ -65,8 +84,11 @@ export async function GET() {
         ok: false,
         database: "error",
         code: info.code,
+        reason: info.reason,
         hint: info.hint,
-        pgbouncerMode
+        vercelEnv,
+        directConfigured,
+        ...target
       },
       { status: 503 }
     );

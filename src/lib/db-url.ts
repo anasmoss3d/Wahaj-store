@@ -52,6 +52,40 @@ export function normalizeDatabaseUrl(rawUrl: string | undefined): string | undef
   return parsed.toString();
 }
 
+export type DatabaseTargetSummary = {
+  configured: boolean;
+  pgbouncerMode: boolean;
+  targetKind: "missing" | "localhost" | "supabase-pooler" | "supabase-direct" | "remote-pooler" | "remote-direct" | "invalid";
+};
+
+/** Non-secret summary of the normalized database URL for /api/health diagnostics. */
+export function describeDatabaseTarget(rawUrl: string | undefined): DatabaseTargetSummary {
+  const normalized = normalizeDatabaseUrl(rawUrl);
+  if (!normalized) {
+    return { configured: false, pgbouncerMode: false, targetKind: "missing" };
+  }
+  try {
+    const parsed = new URL(normalized);
+    const host = parsed.hostname.toLowerCase();
+    const pgbouncerMode = parsed.searchParams.get("pgbouncer") === "true";
+    if (LOCAL_HOSTS.has(host)) {
+      return { configured: true, pgbouncerMode, targetKind: "localhost" };
+    }
+    if (host.endsWith(".pooler.supabase.com")) {
+      return { configured: true, pgbouncerMode, targetKind: "supabase-pooler" };
+    }
+    if (host.endsWith(".supabase.co")) {
+      return { configured: true, pgbouncerMode, targetKind: "supabase-direct" };
+    }
+    if (isPooledPostgresHost(parsed)) {
+      return { configured: true, pgbouncerMode, targetKind: "remote-pooler" };
+    }
+    return { configured: true, pgbouncerMode, targetKind: "remote-direct" };
+  } catch {
+    return { configured: true, pgbouncerMode: false, targetKind: "invalid" };
+  }
+}
+
 /**
  * Derives an IPv4 Supabase Session Pooler URL (port 5432, no `pgbouncer=true`)
  * from a Supabase Transaction Pooler URL (`*.pooler.supabase.com:6543`) so

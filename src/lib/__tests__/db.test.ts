@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { deriveSupabaseSessionPoolerUrl, normalizeDatabaseUrl } from "@/lib/db-url";
+import {
+  deriveSupabaseSessionPoolerUrl,
+  describeDatabaseTarget,
+  normalizeDatabaseUrl
+} from "@/lib/db-url";
 
 describe("normalizeDatabaseUrl", () => {
   it("returns undefined for empty inputs", () => {
@@ -56,5 +60,38 @@ describe("deriveSupabaseSessionPoolerUrl", () => {
     expect(
       deriveSupabaseSessionPoolerUrl("postgresql://postgres:postgres@localhost:5432/wahaj_store")
     ).toBeUndefined();
+  });
+});
+
+describe("describeDatabaseTarget", () => {
+  it("classifies missing, localhost, and Supabase pooler vs direct endpoints without exposing URLs", () => {
+    expect(describeDatabaseTarget(undefined)).toEqual({
+      configured: false,
+      pgbouncerMode: false,
+      targetKind: "missing"
+    });
+    expect(
+      describeDatabaseTarget("postgresql://postgres:postgres@localhost:5432/wahaj_store")
+    ).toEqual({
+      configured: true,
+      pgbouncerMode: false,
+      targetKind: "localhost"
+    });
+    expect(
+      describeDatabaseTarget(
+        "postgresql://postgres.ref:pw@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
+      )
+    ).toEqual({
+      configured: true,
+      pgbouncerMode: true,
+      targetKind: "supabase-pooler"
+    });
+    expect(
+      describeDatabaseTarget("postgresql://postgres:pw@db.ref.supabase.co:5432/postgres")
+    ).toEqual({
+      configured: true,
+      pgbouncerMode: false,
+      targetKind: "supabase-direct"
+    });
   });
 });
