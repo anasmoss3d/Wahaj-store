@@ -1,27 +1,10 @@
-import Image from "next/image";
-import { AdminLoginForm } from "@/components/storefront/auth-forms";
+import { redirect } from "next/navigation";
+import { getCurrentAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminLoginPage() {
-  return (
-    <main className="grid min-h-screen place-items-center px-4 py-10" dir="ltr">
-      <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center gap-3">
-          <Image
-            alt="Wahaj"
-            className="h-14 w-14 rounded-full object-cover"
-            height={96}
-            src="/brand/wahaj-logo.jpg"
-            width={96}
-          />
-          <div>
-            <h1 className="text-2xl font-bold text-concrete-900">Wahaj Admin</h1>
-            <p className="text-sm text-concrete-500">Protected dashboard</p>
-          </div>
-        </div>
-        <AdminLoginForm />
-      </div>
-    </main>
-  );
+/** @deprecated Replaced by unified authentication at /auth/login. */
+export default async function DeprecatedAdminLoginPage() {
+  const admin = await getCurrentAdmin();
+  redirect(admin ? "/admin" : "/auth/login?next=/admin");
 }

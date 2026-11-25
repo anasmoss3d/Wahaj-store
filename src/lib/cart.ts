@@ -7,6 +7,7 @@ import { AppError } from "@/lib/errors";
 import { calculateLinePrice, cartItemSignature } from "@/lib/pricing";
 import { getOrCreateCartSessionId, readCookie, CART_COOKIE } from "@/lib/sessions";
 import { getProductColorImageUrl } from "@/lib/product-images";
+import { getLocale, isCustomColorName, pickLocalized } from "@/lib/i18n";
 
 export type CartViewItem = {
   id: string;
@@ -17,6 +18,7 @@ export type CartViewItem = {
   image: string;
   colorName: string | null;
   colorHex: string | null;
+  colorIsCustom: boolean;
   sizeName: string | null;
   addons: Array<{ id: string; name: string; price: Prisma.Decimal }>;
   quantity: number;
@@ -53,7 +55,7 @@ async function findActiveCart(create = false) {
   if (!sessionId) return null;
 
   const sessionCart = await prisma.cart.findFirst({
-    where: { sessionId, status: "ACTIVE" },
+    where: { sessionId, userId: null, status: "ACTIVE" },
     orderBy: { updatedAt: "desc" }
   });
 
@@ -65,8 +67,90 @@ async function findActiveCart(create = false) {
   });
 }
 
+export async function mergeGuestCartIntoUserCart(userId: string) {
+  const sessionId = await readCookie(CART_COOKIE);
+  if (!sessionId) return;
+
+  const guestCart = await prisma.cart.findFirst({
+    where: { sessionId, userId: null, status: "ACTIVE" },
+    include: {
+      items: {
+        include: { addons: true }
+      }
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  if (!guestCart) return;
+
+  const userCart = await prisma.cart.findFirst({
+    where: { userId, status: "ACTIVE" },
+    include: {
+      items: {
+        include: { addons: true }
+      }
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  if (!userCart) {
+    await prisma.cart.update({
+      where: { id: guestCart.id },
+      data: { userId }
+    });
+    return;
+  }
+
+  if (guestCart.items.length === 0) {
+    await prisma.cart.update({
+      where: { id: guestCart.id },
+      data: { status: "ABANDONED" }
+    });
+    return;
+  }
+
+  const userItemsBySignature = new Map(
+    userCart.items.map((item) => [
+      cartItemSignature(
+        item.productId,
+        item.productColorId,
+        item.addons.map((addon) => addon.productAddonId),
+        item.productSizeId
+      ),
+      item
+    ])
+  );
+
+  await prisma.$transaction(async (tx) => {
+    for (const guestItem of guestCart.items) {
+      const signature = cartItemSignature(
+        guestItem.productId,
+        guestItem.productColorId,
+        guestItem.addons.map((addon) => addon.productAddonId),
+        guestItem.productSizeId
+      );
+      const matchingUserItem = userItemsBySignature.get(signature);
+      if (matchingUserItem) {
+        await tx.cartItem.update({
+          where: { id: matchingUserItem.id },
+          data: { quantity: Math.min(99, matchingUserItem.quantity + guestItem.quantity) }
+        });
+      } else {
+        await tx.cartItem.update({
+          where: { id: guestItem.id },
+          data: { cartId: userCart.id }
+        });
+      }
+    }
+    await tx.cart.update({
+      where: { id: guestCart.id },
+      data: { status: "ABANDONED" }
+    });
+  });
+}
+
 async function getCartViewUncached(): Promise<CartView> {
-  const cart = await findActiveCart(false);
+  const [cart, locale] = await Promise.all([findActiveCart(false), getLocale()]);
   if (!cart) {
     return {
       id: null,
@@ -114,22 +198,29 @@ async function getCartViewUncached(): Promise<CartView> {
     return {
       id: row.id,
       productId: row.productId,
-      productName: row.product.name,
+      productName: pickLocalized(locale, row.product.name, row.product.nameEn),
       slug: row.product.slug,
       sku: row.product.sku,
       image: row.productColor
         ? getProductColorImageUrl(
             row.product.slug,
-            row.productColor.color.name,
+            row.productColor.color.nameEn ?? row.productColor.color.name,
             row.productColor.imageUrl || row.product.mainImage
           )
         : row.product.mainImage,
-      colorName: row.productColor?.color.name ?? null,
+      colorName: row.productColor
+        ? pickLocalized(locale, row.productColor.color.name, row.productColor.color.nameEn)
+        : null,
       colorHex: row.productColor?.color.hexCode ?? null,
-      sizeName: row.productSize?.size.name ?? null,
+      colorIsCustom: row.productColor
+        ? isCustomColorName(row.productColor.color.name, row.productColor.color.nameEn)
+        : false,
+      sizeName: row.productSize
+        ? pickLocalized(locale, row.productSize.size.name, row.productSize.size.nameEn)
+        : null,
       addons: addonModels.map((addon) => ({
         id: addon.id,
-        name: addon.name,
+        name: pickLocalized(locale, addon.name, addon.nameEn),
         price: addon.price
       })),
       quantity: row.quantity,
@@ -271,7 +362,7 @@ export async function addCartItem(input: {
       displayImage: color
         ? getProductColorImageUrl(
             product.slug,
-            color.color.name,
+            color.color.nameEn ?? color.color.name,
             color.imageUrl || product.mainImage
           )
         : product.mainImage,

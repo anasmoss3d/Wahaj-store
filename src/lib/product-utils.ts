@@ -1,5 +1,70 @@
+import { Prisma } from "@prisma/client";
+import type { z } from "zod";
 import { prisma } from "@/lib/db";
-import { SKU_SUGGESTED, skuStem, suggestProductSlug } from "@/lib/utils";
+import { asciiSlug, SKU_SUGGESTED, skuStem, suggestProductSlug } from "@/lib/utils";
+import type { adminProductSchema } from "@/lib/validators";
+
+type ParsedAdminProduct = z.infer<typeof adminProductSchema>;
+
+/** Builds the shared bilingual Prisma `create`/`update` payload for admin product mutations. */
+export function buildProductWriteData(
+  parsed: ParsedAdminProduct,
+  resolved: { slug: string; sku: string }
+) {
+  return {
+    name: parsed.name.trim(),
+    nameEn: parsed.nameEn?.trim() || null,
+    slug: resolved.slug,
+    description: parsed.description.trim(),
+    descriptionEn: parsed.descriptionEn?.trim() || null,
+    basePrice: new Prisma.Decimal(parsed.basePrice),
+    categoryId: parsed.categoryId,
+    mainImage: parsed.mainImage,
+    sku: resolved.sku,
+    stockQuantity: parsed.stockQuantity,
+    active: parsed.active,
+    featured: parsed.featured,
+    bestSeller: parsed.bestSeller,
+    sortOrder: parsed.sortOrder,
+    seoTitle: parsed.seoTitle?.trim() || null,
+    seoTitleEn: parsed.seoTitleEn?.trim() || null,
+    metaDescription: parsed.metaDescription?.trim() || null,
+    metaDescriptionEn: parsed.metaDescriptionEn?.trim() || null,
+    canonicalUrl: parsed.canonicalUrl?.trim() || null,
+    images: {
+      create: parsed.gallery.map((image) => ({
+        url: image.url,
+        alt: image.alt?.trim() || null,
+        altEn: image.altEn?.trim() || null,
+        sortOrder: image.sortOrder
+      }))
+    },
+    colors: {
+      create: parsed.colors.map((color) => ({
+        colorId: color.colorId,
+        additionalPrice: new Prisma.Decimal(color.additionalPrice),
+        imageUrl: color.imageUrl,
+        active: color.active,
+        sortOrder: color.sortOrder
+      }))
+    },
+    sizes: {
+      create: parsed.sizes.map((size) => ({
+        sizeId: size.sizeId,
+        price: new Prisma.Decimal(size.price),
+        active: size.active,
+        sortOrder: size.sortOrder
+      }))
+    },
+    addons: {
+      create: parsed.addonIds.map((addonId, index) => ({
+        addonId,
+        sortOrder: index,
+        active: true
+      }))
+    }
+  };
+}
 
 /**
  * A product that lists a color the admin muted globally would silently
@@ -57,6 +122,7 @@ export async function uniqueProductSlug(base: string, excludeId?: string) {
  */
 export async function resolveProductSlug(input: {
   name: string;
+  nameEn?: string | null;
   sku: string;
   slug?: string | null;
   productSlug?: string | null;
@@ -73,7 +139,7 @@ export async function resolveProductSlug(input: {
   // The placeholder SKU is not a real source for a slug (it would produce
   // "wah-auto" for Arabic names), so treat it as absent.
   const sku = input.sku && input.sku !== SKU_SUGGESTED ? input.sku : "";
-  return uniqueProductSlug(suggestProductSlug(input.name, sku), input.productId);
+  return uniqueProductSlug(suggestProductSlug(input.name, sku, input.nameEn), input.productId);
 }
 
 /**
@@ -85,6 +151,7 @@ export async function resolveProductSlug(input: {
  */
 export async function resolveProductSku(input: {
   name: string;
+  nameEn?: string | null;
   sku?: string | null;
   currentSku?: string | null;
   productId?: string;
@@ -93,7 +160,8 @@ export async function resolveProductSku(input: {
   if (current && current !== SKU_SUGGESTED) {
     return current;
   }
-  const base = `WAH-${skuStem(input.name)}`;
+  const stemSource = asciiSlug(input.name) ? input.name : (input.nameEn?.trim() || input.name);
+  const base = `WAH-${skuStem(stemSource)}`;
   const others = await prisma.product.findMany({
     where: { sku: { startsWith: `${base}-` }, ...(input.productId ? { id: { not: input.productId } } : {}) },
     select: { sku: true }

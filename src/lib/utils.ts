@@ -31,12 +31,12 @@ export function asciiSlug(input: string) {
 }
 
 /**
- * Prefers readable Latin letters from the name; falls back to the ASCII SKU
- * (e.g. "candles-1002") when the name is Arabic or otherwise has no Latin
- * characters. Last resort is a timestamped fallback so saves never fail.
+ * Prefers readable Latin letters from the primary or English name; falls back to
+ * the ASCII SKU (e.g. "candles-1002") when only Arabic text is given.
+ * Last resort is a timestamped fallback so saves never fail.
  */
-export function suggestProductSlug(name: string, sku: string) {
-  return asciiSlug(name) || asciiSlug(sku) || `product-${Date.now()}`;
+export function suggestProductSlug(name: string, sku: string, nameEn?: string | null) {
+  return asciiSlug(name) || asciiSlug(nameEn ?? "") || asciiSlug(sku) || `product-${Date.now()}`;
 }
 
 /**
@@ -59,8 +59,9 @@ function skuCounter(name: string) {
 }
 
 /** Deterministic SKU preview for the admin form; the final value is generated uniquely on the server. */
-export function suggestedProductSku(name: string) {
-  return name.trim() ? `WAH-${skuStem(name)}-${skuCounter(name)}` : `${SKU_SUGGESTED}-000`;
+export function suggestedProductSku(name: string, nameEn?: string | null) {
+  const source = asciiSlug(name) ? name : (nameEn?.trim() || name);
+  return source.trim() ? `WAH-${skuStem(source)}-${skuCounter(source)}` : `${SKU_SUGGESTED}-000`;
 }
 
 export function compact<T>(items: Array<T | null | undefined>) {

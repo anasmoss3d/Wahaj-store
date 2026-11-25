@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isCustomColorName, pickLocalized } from "@/lib/dictionary";
 import { asciiSlug, SKU_SUGGESTED, skuStem, suggestedProductSku, suggestProductSlug } from "@/lib/utils";
 
 describe("asciiSlug", () => {
@@ -57,5 +58,25 @@ describe("suggestedProductSku", () => {
   it("uses the generic stem for empty or Arabic-only names", () => {
     expect(suggestedProductSku("")).toBe(`${SKU_SUGGESTED}-000`);
     expect(suggestedProductSku("شمعة الفراولة باللبن")).toBe("WAH-WAH-927");
+  });
+
+  it("prefers English secondary name for slug/SKU when primary name is Arabic", () => {
+    expect(suggestProductSlug("شمعة اللافندر", "", "Lavender Soy Candle")).toBe("lavender-soy-candle");
+    expect(suggestedProductSku("شمعة اللافندر", "Lavender Soy Candle")).toMatch(/^WAH-LAVENDERSOYCAN-\d{3}$/);
+  });
+});
+
+describe("bilingual localization helpers", () => {
+  it("resolves primary Arabic or secondary English fields with fallback", () => {
+    expect(pickLocalized("ar", "شمعة اللافندر", "Lavender Candle")).toBe("شمعة اللافندر");
+    expect(pickLocalized("en", "شمعة اللافندر", "Lavender Candle")).toBe("Lavender Candle");
+    expect(pickLocalized("en", "شمعة اللافندر", null)).toBe("شمعة اللافندر");
+    expect(pickLocalized("ar", "", "Lavender Candle")).toBe("Lavender Candle");
+  });
+
+  it("matches custom color labels in both languages", () => {
+    expect(isCustomColorName("لون مخصص", "Custom Color")).toBe(true);
+    expect(isCustomColorName("لون مخصص", null)).toBe(true);
+    expect(isCustomColorName("أبيض دافئ", "Warm White")).toBe(false);
   });
 });
