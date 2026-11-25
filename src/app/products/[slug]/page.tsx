@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { CandleCareInstructions } from "@/components/storefront/candle-care-instructions";
 import { ProductCustomizer } from "@/components/storefront/product-customizer";
 import { ReviewForm, Stars } from "@/components/storefront/reviews";
 import { StorefrontFooter } from "@/components/storefront/footer";
@@ -98,6 +99,12 @@ export default async function ProductPage({ params }: { params: Params }) {
   const jsonLd = productJsonLd(product, locale);
   const avg = ratingAgg._avg.rating ?? 0;
   const reviewCount = ratingAgg._count.rating;
+  const isCandleProduct =
+    product.category.slug === "candles" ||
+    product.category.name.includes("شموع") ||
+    product.slug.toLowerCase().includes("candle") ||
+    product.name.includes("شمعة") ||
+    (product.nameEn ?? "").toLowerCase().includes("candle");
   const colorOptions = product.colors.map((item) => ({
     id: item.id,
     name: pickLocalized(locale, item.color.name, item.color.nameEn),
@@ -158,6 +165,7 @@ export default async function ProductPage({ params }: { params: Params }) {
           }))}
           images={galleryImages}
           locale={locale}
+          rating={{ average: avg, count: reviewCount }}
           labels={{
             madeToOrder: dict.madeToOrder,
             startsAt: dict.startsAt,
@@ -174,7 +182,9 @@ export default async function ProductPage({ params }: { params: Params }) {
             previousImage: dict.previousImage,
             nextImage: dict.nextImage,
             viewImage: dict.viewImage,
-            productPhotos: dict.productPhotos
+            productPhotos: dict.productPhotos,
+            reviews: dict.reviews,
+            writeReview: dict.writeReview
           }}
         />
         <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_320px]">
@@ -191,7 +201,9 @@ export default async function ProductPage({ params }: { params: Params }) {
           </aside>
         </section>
 
-        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_420px]">
+        {isCandleProduct ? <CandleCareInstructions locale={locale} /> : null}
+
+        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_420px] scroll-mt-24" id="reviews">
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="font-editorial text-2xl sm:text-3xl font-black text-[#1C1917]">{dict.reviews}</h2>
@@ -237,6 +249,7 @@ export default async function ProductPage({ params }: { params: Params }) {
               saving: dict.saving,
               pending: dict.reviewPending
             }}
+            locale={locale}
             productId={product.id}
           />
         </section>

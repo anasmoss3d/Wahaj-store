@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingBag, Zap } from "lucide-react";
+import { Stars } from "@/components/storefront/reviews";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,11 @@ type GalleryImage = {
   alt: string;
 };
 
+type RatingSummary = {
+  average: number;
+  count: number;
+};
+
 export function ProductCustomizer({
   product,
   colors,
@@ -53,6 +59,7 @@ export function ProductCustomizer({
   images,
   labels,
   action,
+  rating,
   locale = "en"
 }: {
   product: ProductOption;
@@ -61,6 +68,7 @@ export function ProductCustomizer({
   addons: AddonOption[];
   images: GalleryImage[];
   action?: React.ReactNode;
+  rating?: RatingSummary;
   locale?: Locale;
   labels: {
     madeToOrder: string;
@@ -79,6 +87,8 @@ export function ProductCustomizer({
     nextImage: string;
     viewImage: string;
     productPhotos: string;
+    reviews?: string;
+    writeReview?: string;
   };
 }) {
   const router = useRouter();
@@ -171,7 +181,7 @@ export function ProductCustomizer({
     <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="grid content-start gap-3.5">
         <div
-          className="relative aspect-[4/5] overflow-hidden rounded-2xl sm:rounded-3xl bg-[#EDE7DD] select-none touch-pan-y shadow-sm"
+          className="relative aspect-[4/3] overflow-hidden rounded-2xl sm:rounded-3xl bg-[#EDE7DD] select-none touch-pan-y shadow-sm"
           onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
           onTouchEnd={(e) => {
             if (touchStartX === null) return;
@@ -185,7 +195,7 @@ export function ProductCustomizer({
           {activeImage ? (
             <Image
               alt={activeImage.alt}
-              className="object-cover"
+              className="object-contain"
               fill
               priority
               sizes="(min-width: 1024px) 55vw, 100vw"
@@ -230,7 +240,7 @@ export function ProductCustomizer({
                 aria-label={`${labels.viewImage} ${index + 1}: ${image.alt}`}
                 aria-pressed={image.url === activeImage?.url}
                 className={cn(
-                  "relative h-20 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-[#EDE7DD] transition-all",
+                  "relative h-16 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-[#EDE7DD] transition-all",
                   image.url === activeImage?.url
                     ? "border-[#B85A2D] shadow-sm"
                     : "border-transparent hover:border-[#DED7CB]"
@@ -239,7 +249,7 @@ export function ProductCustomizer({
                 onClick={() => setSelectedImageUrl(image.url)}
                 type="button"
               >
-                <Image alt="" className="object-cover" fill sizes="64px" src={image.url} />
+                <Image alt="" className="object-contain" fill sizes="80px" src={image.url} />
               </button>
             ))}
           </div>
@@ -252,6 +262,22 @@ export function ProductCustomizer({
               {labels.madeToOrder}
             </Badge>
             <h1 className="mt-3 font-editorial text-3xl font-black text-[#1C1917] sm:text-4xl lg:text-5xl">{product.name}</h1>
+            {rating ? (
+              <a
+                className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-[#E5DDD0] bg-white/80 px-3 py-1 text-xs font-medium text-[#57534E] transition-colors hover:border-[#B85A2D] hover:text-[#1C1917]"
+                href="#reviews"
+              >
+                <Stars size={15} value={rating.average} />
+                {rating.count > 0 ? (
+                  <span>
+                    <strong className="font-semibold text-[#1C1917]">{rating.average.toFixed(1)}</strong>{" "}
+                    ({rating.count} {labels.reviews ?? (locale === "ar" ? "تقييم" : "reviews")})
+                  </span>
+                ) : (
+                  <span>{labels.writeReview ?? (locale === "ar" ? "كن أول من يقيّم" : "Be the first to review")}</span>
+                )}
+              </a>
+            ) : null}
             <p className="mt-3 font-editorial text-xl font-bold text-[#B85A2D]">
               {sizes.length > 0
                 ? selectedSize
