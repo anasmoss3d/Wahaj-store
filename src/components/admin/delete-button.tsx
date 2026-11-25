@@ -4,11 +4,12 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import type { ActionState } from "@/app/actions/auth";
+import { useAdminI18n } from "@/components/admin/admin-i18n-context";
 
 export function DeleteButton({
   action,
   id,
-  label = "Delete"
+  label
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   id: string;
@@ -16,13 +17,14 @@ export function DeleteButton({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const { dict } = useAdminI18n();
 
   return (
     <button
-      className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-200 px-3 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-red-200 bg-white px-4 text-xs sm:text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
       disabled={pending}
       onClick={() => {
-        if (!window.confirm("Delete this item? This cannot be undone.")) return;
+        if (!window.confirm(dict.common.confirmDelete)) return;
         startTransition(async () => {
           const formData = new FormData();
           formData.set("id", id);
@@ -33,7 +35,7 @@ export function DeleteButton({
       }}
       type="button"
     >
-      <Trash2 size={16} /> {label}
+      <Trash2 size={16} /> {label ?? dict.common.delete}
     </button>
   );
 }
