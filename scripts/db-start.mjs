@@ -1,27 +1,19 @@
-import EmbeddedPostgres from "embedded-postgres";
+import { ensureLocalPostgres } from "./local-db.mjs";
 
-const pg = new EmbeddedPostgres({
-  databaseDir: "./.pgdata",
-  user: "postgres",
-  password: "postgres",
-  port: 5432,
-  persistent: true,
-  initdbFlags: ["--encoding=UTF8", "--locale=C", "--no-locale"]
-});
+const pg = await ensureLocalPostgres();
 
-try {
-  await pg.start();
-  console.log("Embedded Postgres started (existing cluster).");
-} catch {
-  await pg.initialise();
-  await pg.start();
-  console.log("Embedded Postgres initialised and started.");
+if (!pg) {
+  process.exit(0);
 }
-try {
-  await pg.createDatabase("wahaj_store");
-  console.log("Database wahaj_store created.");
-} catch {
-  console.log("Database wahaj_store already exists.");
-}
+
 console.log("Embedded Postgres is running on port 5432.");
+
+const shutdown = async () => {
+  await pg.stop().catch(() => undefined);
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
 setInterval(() => {}, 1_000_000);
